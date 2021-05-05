@@ -1,7 +1,7 @@
 {
-  "name": "loket-mandatarissen-producer",
-  "version": "0.2.4",
-  "description": "Microservice to produce delta files containing data about mandatees",
+  "name": "delta-producer-concept-scheme-based-cache-maintainer",
+  "version": "0.0.1",
+  "description": "Microservice to maintain the cache graph during delta production process",
   "dependencies": {
     "@lblod/mu-auth-sudo": "^0.2.0",
     "fs-extra": "^8.0.1",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lblod/loket-mandatarissen-producer.git"
+    "url": "git+https://github.com/lblod/delta-producer-concept-scheme-based-cache-maintainer.git"
   },
   "author": "redpencil.io",
   "license": "MIT"
