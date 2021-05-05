@@ -21,8 +21,8 @@ app.post('/delta', async function( req, res ) {
     // Durig the healing (and probably inital sync too) we want as few as much moving parts,
     // If a delta comes in while the healing process is busy, this might yield inconsistent/difficult to troubleshoot results.
     // Suppose:
-    //  - healing produces statement S1 at t1: "REMOVE ?s ?p ?o."
-    //  - random service produces statement S2 at t2: "ADD ?s ?p ?o."
+    //  - healing produces statement S1 at t1: "REMOVE <foo> <bar> <baz>."
+    //  - random service produces statement S2 at t2: "ADD <foo> <bar> <baz>."
     //  - Note: Processing of statements has two phases, updating the cache graph (PH1) and in later step creating the delta file for syncing (PH2)
     //  - Suppose S1 and S2 are correctly processed in order for PH1, but S2 is processed in PH2 before S1. (Because, e.g. healing takes more time)
     //  This would result in cache graph and its delta-files counterpart are out of sync. Which affects the clients information too.
