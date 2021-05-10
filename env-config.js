@@ -34,7 +34,7 @@ export const ERROR_TYPE= 'http://open-services.net/ns/core#Error';
 export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
 
 //task operation of interest
-export const HEALING_PATCH_CACHE_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/healing/deltas/patchCacheGraph';
+export const HEALING_PATCH_CACHE_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchCacheGraph';
 export const INITIAL_CACHE_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/initialCacheGraphSyncing';
 
 //containers will keep track what has been healed etc for reports
