@@ -1,6 +1,6 @@
 {
   "name": "delta-producer-concept-scheme-based-cache-maintainer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Microservice to maintain the cache graph during delta production process",
   "dependencies": {
     "@lblod/mu-auth-sudo": "^0.2.0",
