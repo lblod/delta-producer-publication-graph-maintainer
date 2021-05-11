@@ -110,7 +110,7 @@ Endpoint that receives delta's from the [delta-notifier](https://github.com/mu-s
 
 ## Discussions
 ### What is a cache graph anyway?
-The cache graph acts as an interemediate step in the delta (file) generation process. This has some benefits.
+The cache graph acts as an interemediate step in the delta (file) generation process. This has some benefits. TODO
 
 ### Why must the generated delta's of the application stack be rewritten by the producer?
 Simply writing all incoming delta messages to a file if the subject's `rdf:type` is of interest and offering those files to a consumer service may look as a simple and adequate solution at first sight, but it isn't. This simple approach has two downsides:
