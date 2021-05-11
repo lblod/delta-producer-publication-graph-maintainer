@@ -5,7 +5,7 @@ import { CACHE_GRAPH,
          STATUS_BUSY
        } from '../env-config';
 import { updateTaskStatus, appendTaskError } from '../lib/task';
-import { sparqlEscapePredicate, batchedInsert } from '../lib/utils';
+import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
 
 const EXPORT_CONFIG = require('/config/export.json');
 
@@ -54,5 +54,7 @@ async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptScheme
     ORDER BY ?subject ?predicate ?object
   `;
 
-  await batchedInsert(selectQuery, cacheGraph);
+  const sourceResult = await batchedQuery(selectQuery, 1000);
+  const sourceNTriples = sourceResult.map(t => serializeTriple(t));
+  await batchedUpdate(sourceNTriples, cacheGraph, 'INSERT', 500);
 }
