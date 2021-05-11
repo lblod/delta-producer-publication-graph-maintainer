@@ -58,21 +58,21 @@ async function createResultsContainer( task, nTriples, subject, fileName ){
 async function calculateDiffs( conceptSchemeUri, config, cacheGraph, type, property ){
   //Some optimisations were needed because diff graphs is heavy on the database.
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
-  const graphWhiteList = config.graphWhitelist || [];
+  const graphsFilter = config.graphsFilter || [];
 
-  if(graphWhiteList.length > 1){
-    throw `Currently the max supported length of graphWhiteList is <= 1, see ${JSON.stringify(config)}`;
+  if(graphsFilter.length > 1){
+    throw `Currently the max supported length of graphsFilter is <= 1, see ${JSON.stringify(config)}`;
   }
   else {
     let selectFromDatabase = '';
 
     //Performance optimisation path: we know what graph we want. This graph + predicatePath will be ground truth
-    if(graphWhiteList.length == 1) {
+    if(graphsFilter.length == 1) {
 
       selectFromDatabase = `
         SELECT DISTINCT ?subject ?predicate ?object WHERE {
           BIND(${sparqlEscapeUri(property)} as ?predicate)
-          GRAPH ${sparqlEscapeUri(graphWhiteList[0])}{
+          GRAPH ${sparqlEscapeUri(graphsFilter[0])}{
             ?subject ?predicate ?object.
           }
           ?subject a ${sparqlEscapeUri(type)}.

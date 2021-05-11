@@ -88,6 +88,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `type`: URI of the rdf:type for which the configuration holds
 * `pathToConceptScheme`: list of path segments (URIs) from the resource to the export concept scheme. If the path exists, the resource is in scope of the export. Otherwise the resource is out of scope.
 * `properties`: list of predicates (URIs) to export for the resource type
+* `graphsFilter`: optional list of graphs where the expected triples come from.
 
 The `export` array may contain multiple entries for an `rdf:type`.
 A resource may have multiple types and therefore map to multiple export configugrations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
