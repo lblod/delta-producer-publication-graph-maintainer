@@ -47,11 +47,8 @@ async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptScheme
 
       ?subject a ${sparqlEscapeUri(type)}.
       ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
-
       ?subject ?predicate ?object.
-
     }
-    ORDER BY ?subject ?predicate ?object
   `;
 
   const sourceResult = await batchedQuery(selectQuery, 1000);
