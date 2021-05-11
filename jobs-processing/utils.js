@@ -32,7 +32,7 @@ export async function isBlockingJobActive(){
     SELECT DISTINCT ?job WHERE {
       GRAPH ?g {
         ?job a ${sparqlEscapeUri(JOB_TYPE)};
-             task:operation ?opration;
+             task:operation ?operation;
              adms:status ?status.
       }
       FILTER( ?status IN (
