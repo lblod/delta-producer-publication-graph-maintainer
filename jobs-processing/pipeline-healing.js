@@ -48,14 +48,14 @@ export async function runHealingTask( task ){
   }
 }
 
-async function createResultsContainer(task, nTriples, subject, fileName){
+async function createResultsContainer( task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
   const turtleFile = await writeTtlFile( task.graph , nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
-async function calculateDiffs(conceptSchemeUri, config, cacheGraph, type, property){
+async function calculateDiffs( conceptSchemeUri, config, cacheGraph, type, property ){
   //Some optimisations were needed because diff graphs is heavy on the database.
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
   const graphWhiteList = config.graphWhitelist || [];
