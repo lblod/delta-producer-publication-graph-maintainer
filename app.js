@@ -3,12 +3,13 @@ import bodyParser from 'body-parser';
 import { updateCacheGraph } from './cache-maintenance/main';
 import { doesDeltaContainNewTaskToProcess, isBlockingJobActive} from './jobs-processing/utils' ;
 import { executeScheduledTask } from './jobs-processing/main';
-import { LOG_INCOMING_DELTA, } from './env-config';
+import { LOG_INCOMING_DELTA, CACHE_GRAPH } from './env-config';
+import { chain } from 'lodash';
 
 app.use( bodyParser.json( { type: function(req) { return /^application\/json/.test( req.get('content-type') ); } } ) );
 
 app.post('/delta', async function( req, res ) {
-  const body = req.body;
+  const body = filterCacheGraphUpdatingDelta(req.body); //Temp workaround
 
   if (LOG_INCOMING_DELTA)
     console.log(`Receiving delta ${JSON.stringify(body)}`);
@@ -52,3 +53,29 @@ app.post('/delta', async function( req, res ) {
 });
 
 app.use(errorHandler);
+
+
+/*
+ * Temporary workaround to ignore deltas generated from self
+ * (Note: only visible when containers run in shared network)
+ */
+function filterCacheGraphUpdatingDelta(delta){
+  const deletes = chain(delta)
+        .map(c => c.deletes)
+        .flatten()
+        .filter(t => t.graph.value !== CACHE_GRAPH)
+        .value();
+
+  const inserts = chain(delta)
+        .map(c => c.inserts)
+        .flatten()
+        .filter(t => t.graph.value !== CACHE_GRAPH)
+        .value();
+
+  if(!(inserts.length || deletes.length)){
+    return [];
+  }
+  else {
+    return [ { deletes, inserts } ];
+  }
+}
