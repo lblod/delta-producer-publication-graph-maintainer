@@ -394,6 +394,7 @@ async function exportResource(uri, config) {
   });
 
   for (let prop of config.properties) {
+    //Note the CacheGraph is blacklisted -> it should not ONLY reside in the cacheGraph
     const result = await query(`
       SELECT DISTINCT ?o WHERE {
         GRAPH ?g {
@@ -436,7 +437,8 @@ function getChildConfigurations(config) {
 }
 
 /**
- * Returns whether the given subject has a path to the export concept scheme for the given export configuration
+ * Returns whether the given subject has a path to the export concept scheme for the given export configuration.
+ * Note the CacheGraph is blacklisted -> it should not ONLY reside in the cacheGraph
 */
 async function hasPathToExportConceptScheme(subject, config) {
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
