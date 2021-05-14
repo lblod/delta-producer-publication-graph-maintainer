@@ -10,7 +10,7 @@ const EXPORT_CONFIG = require('/config/export.json');
 //      preprocess the imported config by resolving all prefixed URIs with full URIs
 
 /**
- * Rewriting the incoming delta message to a delta message relevant for the mandatee export
+ * Rewriting the incoming delta message to a delta message relevant for the conceptScheme export
 */
 export async function produceConceptSchemeDelta(delta) {
   const updatedDeltas = [];
@@ -103,7 +103,7 @@ async function buildTypeCache(changeSet) {
 }
 
 /**
- * Rewrite the received triples to insert to an insert changeset relevant for the export of mandatees.
+ * Rewrite the received triples to insert to an insert changeset relevant for the export of conceptSchemes.
  *
  * Insertion of 1 triple may lead to a bunch of resources to be exported,
  * because the newly inserted triple completes the path to the export concept scheme.
@@ -133,27 +133,39 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
         const isInScope = await hasPathToExportConceptScheme(subject, config);
         const predicate = triple.predicate.value;
         const isConfiguredForExport = predicate == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || config.properties.includes(predicate);
+
         if (isInScope && isConfiguredForExport) {
+
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
+
           triplesToInsert.push(triple);
           break; // no need to check the remaining export configurations since triple is already copied to the resulting changeset
-        } else if (LOG_DELTA_REWRITE) {
+
+        }
+        else if (LOG_DELTA_REWRITE) {
+
           if (!isInScope)
             console.log(`No path to export concept scheme found for subject <${subject}>.`);
+
           else if (!isConfiguredForExport)
             console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
+
         }
+
         if (LOG_DELTA_REWRITE)
           console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
+
       }
-    } else if (LOG_DELTA_REWRITE) {
+    }
+    else if (LOG_DELTA_REWRITE) {
       console.log(`Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
   }
 
   const processedResources = []; // tmp cache of recursively added resources
-  const enrichments = await enrichInsertedChangeset(changeSet, typeCache, processedResources);
+
+  const enrichments = await enrichInsertedChangeset(triplesToInsert, typeCache, processedResources);
   if (LOG_DELTA_REWRITE) {
     console.log(`Checked ${processedResources.length} additional resources to insert.`);
     console.log(`Adding ${enrichments.length} triples to insert to the changeset.`);
@@ -208,7 +220,7 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
 
 
 /**
- * Rewrite the received triples to delete to a delete changeset relevant for the export of mandatees.
+ * Rewrite the received triples to delete to a delete changeset relevant for the export of conceptSchemes.
  *
  * Deletion of 1 triple may lead to a bunch of resources to be deleted,
  * because the deleted triple breaks the path to the export concept scheme.
