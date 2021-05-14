@@ -49,6 +49,12 @@ export async function produceConceptSchemeDelta(delta) {
  * in the store since the data has been deleted. That's why the rdf:type for a URI is retrieved
  * from the triple store as well as from the delta changeset.
  *
+ * TODO: verify if the cacheGraph could be a more robust replacement. I.e. in case of deletion,
+ * both delta and cacheGraph may have their use. Both refer to outdated information.
+ * -> why using the cacheGraph could be considered better: with delta, it might be that the changeset is
+ * not atomic, meaning delete statements [<foo> <bar> <baz>, <foo> a <Type>] might be spread over 2 deltas,
+ * while the type information is not present anymore in the source graph. In that sense the type cache might be outdated.
+ *
  * Building the cache is purely based on rdf:type and does not take the path from
  * a resource to the export concept scheme into account.
  *
