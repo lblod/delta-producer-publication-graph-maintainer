@@ -2,7 +2,7 @@ import { sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath } from '../lib/utils';
-import { LOG_DELTA_REWRITE } from '../env-config';
+import { LOG_DELTA_REWRITE, CACHE_GRAPH } from '../env-config';
 
 const EXPORT_CONFIG = require('/config/export.json');
 
@@ -66,7 +66,14 @@ async function buildTypeCache(changeSet) {
     console.log(`Building type cache for ${uris.length} URIs based on types found in the store and the changeset.`);
 
   for (let uri of uris) {
-    const result = await query(`SELECT DISTINCT ?type WHERE { ${sparqlEscapeUri(uri)} a ?type }`);
+    const result = await query(`
+      SELECT DISTINCT ?type WHERE {
+        GRAPH ?g {
+          ${sparqlEscapeUri(uri)} a ?type.
+        }
+        FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
+      }
+    `);
     const typesFromStore = result.results.bindings.map(b => b['type'].value);
     const typesFromChangeset = triples.filter(t => t.subject.value == uri && t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type').map(t => t.object.value);
     const types = uniq([...typesFromStore, ...typesFromChangeset]);
@@ -369,7 +376,13 @@ async function exportResource(uri, config) {
   });
 
   for (let prop of config.properties) {
-    const result = await query(`SELECT DISTINCT ?o WHERE { ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o }`);
+    const result = await query(`
+      SELECT DISTINCT ?o WHERE {
+        GRAPH ?g {
+          ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
+        }
+        FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
+      }`);
 
     for (let b of result.results.bindings) {
       const relatedUri = b['o'].value;
@@ -411,7 +424,16 @@ async function hasPathToExportConceptScheme(subject, config) {
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
   const result = await query(`
     SELECT ?p WHERE {
-      ${sparqlEscapeUri(subject)} ${predicatePath} ${sparqlEscapeUri(EXPORT_CONFIG.conceptScheme)} ; ?p ?o .
+      BIND(${sparqlEscapeUri(subject)} as ?s)
+
+      ?s ${predicatePath} ${sparqlEscapeUri(EXPORT_CONFIG.conceptScheme)}.
+
+      GRAPH ?g {
+       ?s ?p ?o .
+      }
+
+      FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
+
     } LIMIT 1
   `);
   return result.results.bindings.length;
