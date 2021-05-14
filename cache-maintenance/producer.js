@@ -12,7 +12,7 @@ const EXPORT_CONFIG = require('/config/export.json');
 /**
  * Rewriting the incoming delta message to a delta message relevant for the mandatee export
 */
-async function produceMandateesDelta(delta) {
+export async function produceConceptSchemeDelta(delta) {
   const updatedDeltas = [];
 
   for (let changeSet of delta) {
@@ -415,8 +415,4 @@ async function hasPathToExportConceptScheme(subject, config) {
     } LIMIT 1
   `);
   return result.results.bindings.length;
-}
-
-export {
-  produceMandateesDelta
 }

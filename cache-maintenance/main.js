@@ -1,7 +1,6 @@
-import { produceMandateesDelta } from './producer';
+import { produceConceptSchemeDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
-import { CACHE_GRAPH,
-       } from '../env-config';
+import { CACHE_GRAPH } from '../env-config';
 import {  updateSudo as update } from '@lblod/mu-auth-sudo';
 import { serializeTriple, storeError } from '../lib/utils';
 import { chain } from 'lodash';
@@ -10,7 +9,7 @@ import { chain } from 'lodash';
 // It feels a bit like over kill right now to do so.
 export async function updateCacheGraph( deltaPayload ){
   try {
-    const delta = await produceMandateesDelta(deltaPayload);
+    const delta = await produceConceptSchemeDelta(deltaPayload);
 
     //always first delet then insert
     const deletes = chain(delta)
