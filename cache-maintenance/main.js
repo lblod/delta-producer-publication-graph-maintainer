@@ -12,6 +12,15 @@ export async function updateCacheGraph( deltaPayload ){
     const delta = await produceConceptSchemeDelta(deltaPayload);
 
     //always first delet then insert
+    let delta = await produceConceptSchemeDelta(deltaPayload);
+    //TODO: an optimisation step of folding the changesets
+    // + removing redundant inserts/deletes (we have the cache graph we can compare to)
+    // This will be a huge efficiency and ease of debugging win.
+    // However, there is an annoying technical bit in folding, where sometimes
+    // triples coming from deltas are in different lexical space and same logical value.
+    // e.g. 2021-05-04T00:00:00Z vs 2021-05-04T00:00:000Z
+    // Comparing these may not be super straightforward.
+    // Because it's just bugprone to implement, need to look for the right library.
     const deletes = chain(delta)
           .map(c => c.deletes)
           .flatten()
