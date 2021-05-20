@@ -5,6 +5,9 @@ import { doesDeltaContainNewTaskToProcess, isBlockingJobActive} from './jobs-pro
 import { executeScheduledTask } from './jobs-processing/main';
 import { LOG_INCOMING_DELTA, CACHE_GRAPH } from './env-config';
 import { chain } from 'lodash';
+import { ProcessingQueue } from './lib/processing-queue';
+
+const producerQueue = new ProcessingQueue();
 
 app.use( bodyParser.json( { type: function(req) { return /^application\/json/.test( req.get('content-type') ); } } ) );
 
@@ -46,7 +49,8 @@ app.post('/delta', async function( req, res ) {
   }
   else {
     //normal operation mode: maintaining the cache graph
-    await updateCacheGraph(body);
+    //Put in a queue, because we want to make sure to have them ordered. TODO: understand node better :-)
+    producerQueue.addJob(async () => { return await updateCacheGraph(body); } );
   }
 
   res.status(202).send();
