@@ -30,7 +30,7 @@ export async function runHealingTask( task ){
     // The triples to push to the cache graph should be equal to
     // - all triples whose ?s link to a the conceptscheme (through pathToConceptScheme) and
     // - whose ?p match the properties defined in the EXPORT_CONFIG and
-    // - should NOT reside exclusively in the cache graph.
+    // - (should NOT reside exclusively in the cache graph) XOR (reside in a set of predfined graphs)
     //
     // In the first step, we build this set (say set A), looking for triples matching the above conditions for a specic ?p.
     // (For performance reasons, we split it up.)
