@@ -1,4 +1,4 @@
-import { sparqlEscapeUri } from 'mu';
+import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { CACHE_GRAPH,
          STATUS_FAILED,
          STATUS_SUCCESS,
@@ -24,7 +24,8 @@ export async function runInitialSyncTask( task ) {
                                                       conceptSchemeUri,
                                                       config,
                                                       config.type,
-                                                      property);
+                                                      property,
+                                                      config.graphsFilter || []);
       }
     }
 
@@ -38,18 +39,46 @@ export async function runInitialSyncTask( task ) {
   }
 }
 
-async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptSchemeUri, config, type, property){
+async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptSchemeUri, config, type, property, graphsFilter){
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
 
-  const selectQuery = `
-    SELECT DISTINCT ?subject ?predicate ?object WHERE {
-      BIND(${sparqlEscapeUri(property)} as ?predicate)
+  let selectQuery = '';
 
-      ?subject a ${sparqlEscapeUri(type)}.
-      ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
-      ?subject ?predicate ?object.
-    }
-  `;
+  if(graphsFilter.length) {
+
+    const graphsFilterStr = graphsFilter
+          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .join(' || ');
+
+    selectQuery = `
+      SELECT DISTINCT ?subject ?predicate ?object WHERE {
+        BIND(${sparqlEscapeUri(property)} as ?predicate)
+
+        ?subject a ${sparqlEscapeUri(type)}.
+        ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
+
+        GRAPH ?g {
+          ?subject ?predicate ?object.
+        }
+
+        FILTER ( ${graphsFilterStr} )
+       }
+    `;
+
+  }
+  else {
+
+    selectQuery = `
+      SELECT DISTINCT ?subject ?predicate ?object WHERE {
+        BIND(${sparqlEscapeUri(property)} as ?predicate)
+
+        ?subject a ${sparqlEscapeUri(type)}.
+        ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
+        ?subject ?predicate ?object.
+      }
+    `;
+
+  }
 
   const sourceResult = await batchedQuery(selectQuery, 1000);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
