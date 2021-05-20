@@ -1,4 +1,4 @@
-import { sparqlEscapeUri } from 'mu';
+import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath } from '../lib/utils';
@@ -399,7 +399,7 @@ async function exportResource(uri, config) {
         GRAPH ?g {
           ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
         }
-        FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
+        ${buildGraphFilter(config)}
       }`);
 
     for (let b of result.results.bindings) {
@@ -441,6 +441,7 @@ function getChildConfigurations(config) {
 */
 async function hasPathToExportConceptScheme(subject, config) {
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
+
   const result = await query(`
     SELECT ?p WHERE {
       BIND(${sparqlEscapeUri(subject)} as ?s)
@@ -451,9 +452,27 @@ async function hasPathToExportConceptScheme(subject, config) {
        ?s ?p ?o .
       }
 
-      FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
+      ${buildGraphFilter(config)}
 
     } LIMIT 1
   `);
   return result.results.bindings.length;
+}
+
+function buildGraphFilter(config){
+  // Either we want the triple to resided in a spefic (set) of graphs,
+  // or not (exclusively) in the cache graph.
+  let filter = `FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))`;
+
+  if(config.graphsFilter.length){
+
+    const graphsFilterStrPart = config
+          .graphsFilter
+          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .join(' || ');
+
+    filter = `FILTER ( ${graphsFilterStrPart} )`;
+  }
+
+  return filter;
 }
