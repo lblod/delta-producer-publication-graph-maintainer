@@ -1,7 +1,5 @@
 import { produceConceptSchemeDelta } from './producer';
-import { sparqlEscapeUri } from 'mu';
 import { CACHE_GRAPH } from '../env-config';
-import {  querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { serializeTriple, storeError, batchedUpdate } from '../lib/utils';
 import { chain } from 'lodash';
 
