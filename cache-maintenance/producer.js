@@ -77,7 +77,6 @@ async function buildTypeCache(changeSet) {
         GRAPH ?g {
           ${sparqlEscapeUri(uri)} a ?type.
         }
-        FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))
       }
     `);
     const typesFromStore = result.results.bindings.map(b => b['type'].value);
