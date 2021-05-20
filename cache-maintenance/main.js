@@ -1,17 +1,14 @@
 import { produceConceptSchemeDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
 import { CACHE_GRAPH } from '../env-config';
-import {  updateSudo as update } from '@lblod/mu-auth-sudo';
-import { serializeTriple, storeError } from '../lib/utils';
+import {  querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
+import { serializeTriple, storeError, batchedUpdate } from '../lib/utils';
 import { chain } from 'lodash';
 
 //TODO: consider bringing the processing of cache under a job operation.
 // It feels a bit like over kill right now to do so.
 export async function updateCacheGraph( deltaPayload ){
   try {
-    const delta = await produceConceptSchemeDelta(deltaPayload);
-
-    //always first delet then insert
     let delta = await produceConceptSchemeDelta(deltaPayload);
     //TODO: an optimisation step of folding the changesets
     // + removing redundant inserts/deletes (we have the cache graph we can compare to)
@@ -21,6 +18,8 @@ export async function updateCacheGraph( deltaPayload ){
     // e.g. 2021-05-04T00:00:00Z vs 2021-05-04T00:00:000Z
     // Comparing these may not be super straightforward.
     // Because it's just bugprone to implement, need to look for the right library.
+
+    //always first delete then insert
     const deletes = chain(delta)
           .map(c => c.deletes)
           .flatten()
@@ -34,11 +33,11 @@ export async function updateCacheGraph( deltaPayload ){
           .value();
 
     if(deletes.length){
-      await removeFromCacheGraph(deletes.join('\n'));
+      await batchedUpdate(deletes, CACHE_GRAPH, 'DELETE');
     }
 
     if(inserts.length){
-      await insertIntoCacheGraph(inserts.join('\n'));
+     await batchedUpdate(inserts, CACHE_GRAPH, 'INSERT');
     }
 
   }
@@ -47,28 +46,4 @@ export async function updateCacheGraph( deltaPayload ){
     console.error(errorMsg);
     await storeError(errorMsg);
   }
-}
-
-async function insertIntoCacheGraph( triples ){
-  const queryStr = `
-    INSERT DATA {
-      GRAPH ${sparqlEscapeUri(CACHE_GRAPH)}{
-       ${triples}
-     }
-    }
-  `;
-
-  await update(queryStr);
-}
-
-async function removeFromCacheGraph( triples ){
-  const queryStr = `
-    DELETE DATA {
-      GRAPH ${sparqlEscapeUri(CACHE_GRAPH)}{
-       ${triples}
-     }
-    }
-  `;
-
-  await update(queryStr);
 }
