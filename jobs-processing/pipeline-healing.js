@@ -1,4 +1,4 @@
-import { uuid, sparqlEscapeUri } from 'mu';
+import { uuid, sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { STATUS_BUSY,
          STATUS_FAILED,
          STATUS_SUCCESS,
@@ -78,10 +78,21 @@ function groupPathToConceptSchemePerProperty(config){
     const extendedProperties = [...configEntry.properties, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'];
     for(const property of extendedProperties){
       if(result[property]){
-        result[property].push(configEntry.pathToConceptScheme);
+        result[property].push(
+          {
+            pathToConceptScheme: configEntry.pathToConceptScheme,
+            graphsFilter: configEntry.graphsFilter
+          }
+        );
       }
       else {
-        result[property] = [ configEntry.pathToConceptScheme ];
+        result[property] =
+        [
+          {
+            pathToConceptScheme: configEntry.pathToConceptScheme,
+            graphsFilter: configEntry.graphsFilter
+          }
+        ];
       }
     }
   }
@@ -100,12 +111,13 @@ async function createResultsContainer( task, nTriples, subject, fileName ){
  */
 async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
   let sourceTriples = [];
-  for(const pathToConceptScheme of propertyMap[property]){
-    const scopedSourceTriples = await getScopedSourceTriples(pathToConceptScheme,
-                                                                   property,
-                                                                   conceptSchemeUri,
-                                                                   CACHE_GRAPH,
-                                                                   EXPORT_CONFIG);
+  for(const config of propertyMap[property]){
+    const scopedSourceTriples = await getScopedSourceTriples(config.pathToConceptScheme,
+                                                             config.graphsFilter || [],
+                                                             property,
+                                                             conceptSchemeUri,
+                                                             CACHE_GRAPH,
+                                                             EXPORT_CONFIG);
 
     sourceTriples = [ ...sourceTriples, ...scopedSourceTriples ];
   }
@@ -139,23 +151,27 @@ async function getCachedTriples(property, cacheGraph){
  * Gets the source triples for a property and a pathToConceptScheme from the database,
  * for all graphs except the ones exclusively residing in the cache graph
  */
-async function getScopedSourceTriples( pathToConceptScheme, property, conceptSchemeUri, cacheGraph, exportConfig ){
+async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, property, conceptSchemeUri, cacheGraph, exportConfig ){
 
   const predicatePath = pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
-  //graphsfilter is an optional optimisation step, when it's known WHERE data resides
-  const graphsFilter = exportConfig.graphsFilter || [];
 
   let selectFromDatabase = '';
 
-  if(graphsFilter.length == 1) {
+  if(graphsFilter.length) {
+
+    const graphsFilterStr = graphsFilter
+          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .join(' || ');
 
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
-        GRAPH ${sparqlEscapeUri(graphsFilter[0])}{
+        GRAPH ?g {
           ?subject ?predicate ?object.
         }
         ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
+
+        FILTER ( ${graphsFilterStr} )
        }
     `;
   }
