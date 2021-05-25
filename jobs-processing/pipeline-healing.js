@@ -4,7 +4,8 @@ import { STATUS_BUSY,
          STATUS_SUCCESS,
          CACHE_GRAPH,
          INSERTION_CONTAINER,
-         REMOVAL_CONTAINER
+         REMOVAL_CONTAINER,
+         REPORTING_FILES_GRAPH
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
 import { sparqlEscapePredicate, batchedQuery, batchedUpdate, diffNTriples, serializeTriple } from '../lib/utils';
@@ -102,7 +103,7 @@ function groupPathToConceptSchemePerProperty(config){
 async function createResultsContainer( task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
-  const turtleFile = await writeTtlFile( task.graph , nTriples.join('\n'), fileName);
+  const turtleFile = await writeTtlFile(REPORTING_FILES_GRAPH || task.graph, nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 

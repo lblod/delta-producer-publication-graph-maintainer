@@ -41,6 +41,9 @@ export const INITIAL_CACHE_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/
 export const REMOVAL_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/RemovalContainer';
 export const INSERTION_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/InsertionContainer';
 
+export const REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
+export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
+
 if(!process.env.CACHE_GRAPH)
   throw `Expected 'CACHE_GRAPH' should be provided.`;
 export const CACHE_GRAPH = process.env.CACHE_GRAPH;
