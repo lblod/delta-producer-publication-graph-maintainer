@@ -34,7 +34,7 @@ export async function runInitialSyncTask( task ) {
   }
   catch(e){
     console.error(e);
-    await appendTaskError(task, e.message);
+    await appendTaskError(task, e.message || e);
     await updateTaskStatus(task, STATUS_FAILED);
   }
 }

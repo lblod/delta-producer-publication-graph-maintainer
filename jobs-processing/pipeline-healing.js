@@ -67,7 +67,7 @@ export async function runHealingTask( task ){
   }
   catch(e){
     console.error(e);
-    await appendTaskError(task, e.message);
+    await appendTaskError(task, e.message || e);
     await updateTaskStatus(task, STATUS_FAILED);
   }
 }
