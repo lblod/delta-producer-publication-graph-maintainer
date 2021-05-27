@@ -49,7 +49,7 @@ app.post('/delta', async function( req, res ) {
   }
   else {
     //normal operation mode: maintaining the cache graph
-    //Put in a queue, because we want to make sure to have them ordered. TODO: understand node better :-)
+    //Put in a queue, because we want to make sure to have them ordered.
     producerQueue.addJob(async () => { return await updateCacheGraph(body); } );
   }
 
