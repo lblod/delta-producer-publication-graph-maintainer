@@ -8,7 +8,7 @@ import { STATUS_BUSY,
          REPORTING_FILES_GRAPH
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
-import { sparqlEscapePredicate, batchedQuery, batchedUpdate, diffNTriples, serializeTriple } from '../lib/utils';
+import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
 import { writeTtlFile } from  '../lib/file-helpers';
 import { uniq } from 'lodash';
 
@@ -197,4 +197,17 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
 
   return sourceNTriples;
+}
+
+function diffNTriples(target, source) {
+  //Note: this only works correctly if triples have same lexical notation.
+  //So think about it, when copy pasting :-)
+  const diff = { additions: [], removals: [] };
+  const targetString = target.join('\n');
+  const sourceString = source.join('\n');
+
+  diff.additions = target.filter(nt => sourceString.indexOf(nt) < 0);
+  diff.removals = source.filter(nt => targetString.indexOf(nt) < 0);
+
+  return diff;
 }
