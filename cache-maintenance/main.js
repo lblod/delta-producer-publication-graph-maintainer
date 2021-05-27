@@ -10,6 +10,7 @@ import { chain } from 'lodash';
 export async function updateCacheGraph( deltaPayload ){
   try {
     let delta = await produceConceptSchemeDelta(deltaPayload);
+    //To remove unncessary deltas, we filter out what is really injected.
     const actualchanges = await filterActualChangesToCacheGraph(delta);
 
     const deletes = chain(actualchanges)
