@@ -193,6 +193,7 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
     `;
   }
 
+  //Note: even if the ordering might be slow, we need ordered triples to compare against on file
   const sourceResult = await batchedQuery(selectFromDatabase, 1000);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
 
