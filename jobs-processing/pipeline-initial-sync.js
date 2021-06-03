@@ -2,7 +2,8 @@ import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { CACHE_GRAPH,
          STATUS_FAILED,
          STATUS_SUCCESS,
-         STATUS_BUSY
+         STATUS_BUSY,
+         MU_CALL_SCOPE_ID_INITIAL_SYNC
        } from '../env-config';
 import { updateTaskStatus, appendTaskError } from '../lib/task';
 import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
@@ -82,5 +83,11 @@ async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptScheme
 
   const sourceResult = await batchedQuery(selectQuery, 1000);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
-  await batchedUpdate(sourceNTriples, cacheGraph, 'INSERT', 500);
+  await batchedUpdate(sourceNTriples,
+                      cacheGraph,
+                      'INSERT',
+                      500,
+                      100,
+                      { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC }
+                     );
 }

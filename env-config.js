@@ -44,6 +44,8 @@ export const INSERTION_CONTAINER = 'http://redpencil.data.gift/id/concept/Healin
 export const REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
 export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
+export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
+
 if(!process.env.CACHE_GRAPH)
   throw `Expected 'CACHE_GRAPH' should be provided.`;
 export const CACHE_GRAPH = process.env.CACHE_GRAPH;
