@@ -1,7 +1,7 @@
 import { sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
-import { INITIAL_PUBLICATION_SYNC_JOB_OPERATION,
-         INITIAL_PUBLICATION_SYNC_TASK_OPERATION,
+import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
+         INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION,
          HEALING_JOB_OPERATION,
          HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
          STATUS_SCHEDULED,
@@ -21,7 +21,7 @@ export async function executeScheduledTask(){
     //TODO: extra checks are required to make sure the system remains in consistent state
     // (this responsability might move to background scheduler)
     //so, e.g. only one scheduled task for jobs of interest, only one job of intersest a time etc..
-    const syncTaskUri = await getTaskUri(INITIAL_PUBLICATION_SYNC_JOB_OPERATION, INITIAL_PUBLICATION_SYNC_TASK_OPERATION, STATUS_SCHEDULED);
+    const syncTaskUri = await getTaskUri(INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION, INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, STATUS_SCHEDULED);
     const healingTaskUri = await getTaskUri(HEALING_JOB_OPERATION, HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, STATUS_SCHEDULED);
 
     if(syncTaskUri){

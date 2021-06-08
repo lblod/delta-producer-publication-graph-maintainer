@@ -26,7 +26,7 @@ Add the service to your `docker-compose.yml`:
       RELATIVE_FILE_PATH: "deltas/mandatarissen"
       PUBLICATION_GRAPH: 'http://redpencil.data.gift/id/deltas/producer/loket-mandatarissen-producer'
       HEALING_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltaHealingMandatarissen'
-      INITIAL_PUBLICATION_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalPublicationGraphSyncing/mandatarissen'
+      INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalPublicationGraphSyncing/mandatarissen'
 
 ```
 
@@ -107,7 +107,7 @@ The following enviroment variables can be optionally configured:
 * `PUBLISHER_URI (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
 * `JOBS_GRAPH (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
 * `PUBLICATION_GRAPH (required)`: URI of the publication graph to maintain
-* `INITIAL_PUBLICATION_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
+* `INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
 * `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
 *  `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
 *  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default. 

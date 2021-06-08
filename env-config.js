@@ -35,7 +35,7 @@ export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/
 
 //task operation of interest
 export const HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchPublicationGraph';
-export const INITIAL_PUBLICATION_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/initialPublicationGraphSyncing';
+export const INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/initialPublicationGraphSyncing';
 
 //containers will keep track what has been healed etc for reports
 export const REMOVAL_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/RemovalContainer';
@@ -50,9 +50,9 @@ if(!process.env.PUBLICATION_GRAPH)
   throw `Expected 'PUBLICATION_GRAPH' should be provided.`;
 export const PUBLICATION_GRAPH = process.env.PUBLICATION_GRAPH;
 
-if(!process.env.INITIAL_PUBLICATION_SYNC_JOB_OPERATION)
-  throw `Expected 'INITIAL_PUBLICATION_SYNC_JOB_OPERATION' should be provided.`;
-export const INITIAL_PUBLICATION_SYNC_JOB_OPERATION = process.env.INITIAL_PUBLICATION_SYNC_JOB_OPERATION;
+if(!process.env.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION)
+  throw `Expected 'INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION' should be provided.`;
+export const INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION = process.env.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION;
 
 if(!process.env.HEALING_JOB_OPERATION)
   throw `Expected 'HEALING_JOB_OPERATION' should be provided.`;
