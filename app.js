@@ -1,6 +1,6 @@
 import { app, errorHandler } from 'mu';
 import bodyParser from 'body-parser';
-import { updatePublicationGraph } from './publication-maintenance/main';
+import { updatePublicationGraph } from './publication-graph-maintenance/main';
 import { doesDeltaContainNewTaskToProcess, isBlockingJobActive} from './jobs-processing/utils' ;
 import { executeScheduledTask } from './jobs-processing/main';
 import { LOG_INCOMING_DELTA, PUBLICATION_GRAPH } from './env-config';
