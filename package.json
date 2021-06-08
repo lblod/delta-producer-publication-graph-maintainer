@@ -1,5 +1,5 @@
 {
-  "name": "delta-producer-concept-scheme-based-publication-maintainer",
+  "name": "delta-producer-publication-graph-maintainer",
   "version": "0.1.3",
   "description": "Microservice to maintain the publication graph during delta production process",
   "dependencies": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lblod/delta-producer-concept-scheme-based-publication-maintainer.git"
+    "url": "git+https://github.com/lblod/delta-producer-publication-graph-maintainer.git"
   },
   "author": "redpencil.io",
   "license": "MIT"
