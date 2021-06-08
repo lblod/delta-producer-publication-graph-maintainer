@@ -1,9 +1,9 @@
-# delta-producer-concept-scheme-based-cache-maintainer
+# delta-producer-concept-scheme-based-publication-maintainer
 
 Producer service resposible for:
-  - maintaining the cache graph which acts as a source of truth for the delta diff files generation
-  - excuting the preriodic healing of the cache graph
-  - excuting the initial sync of the cache graph
+  - maintaining the publication graph which acts as a source of truth for the delta diff files generation
+  - excuting the preriodic healing of the publication graph
+  - excuting the initial sync of the publication graph
 
 ## Tutorials
 ### Add the service to a stack
@@ -11,16 +11,16 @@ Suppose you are interested in publishing all changes related to mandatarissen
 Add the service to your `docker-compose.yml`:
 
 ```
-  delta-producer-concept-scheme-based-cache-maintainer-mandatarissen:
-    image: lblod/delta-producer-concept-scheme-based-cache-maintainer
+  delta-producer-concept-scheme-based-publication-maintainer-mandatarissen:
+    image: lblod/delta-producer-concept-scheme-based-publication-maintainer
     volumes:
       - ./data/files:/share
       - ./config/producer/mandatarissen:/config
     environment:
       RELATIVE_FILE_PATH: "deltas/mandatarissen"
-      CACHE_GRAPH: 'http://redpencil.data.gift/id/deltas/producer/loket-mandatarissen-producer'
+      PUBLICATION_GRAPH: 'http://redpencil.data.gift/id/deltas/producer/loket-mandatarissen-producer'
       HEALING_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltaHealingMandatarissen'
-      INITIAL_CACHE_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalCacheGraphSyncing/mandatarissen'
+      INITIAL_PUBLICATION_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalPublicationGraphSyncing/mandatarissen'
 
 ```
 
@@ -51,7 +51,7 @@ export default [
       // anything
     },
     callback: {
-      url: 'http://delta-producer-concept-scheme-based-cache-maintainer-mandatarissen/delta',
+      url: 'http://delta-producer-concept-scheme-based-publication-maintainer-mandatarissen/delta',
       method: 'POST'
     },
     options: {
@@ -100,8 +100,8 @@ The following enviroment variables can be optionally configured:
 * `RELATIVE_FILE_PATH (default: "deltas")`: relative path of the delta files compared to the root folder of the file service that will host the files.
 * `PUBLISHER_URI (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
 * `JOBS_GRAPH (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
-* `CACHE_GRAPH (required)`: URI of the cache graph to maintain
-* `INITIAL_CACHE_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
+* `PUBLICATION_GRAPH (required)`: URI of the publication graph to maintain
+* `INITIAL_PUBLICATION_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
 * `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
 *  `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
 *  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default. 
@@ -111,8 +111,8 @@ The following enviroment variables can be optionally configured:
 Endpoint that receives delta's from the [delta-notifier](https://github.com/mu-semtech/delta-notifier). The delta's are rewritten based on the configured export for mandatees. The resulting delta's are written to files that can be retrieved via the `GET /files` endpoint.
 
 ## Discussions
-### What is a cache graph anyway?
-The cache graph acts as an interemediate step in the delta (file) generation process. This has some benefits. TODO
+### What is a publication graph anyway?
+The publication graph acts as an interemediate step in the delta (file) generation process. This has some benefits. TODO
 
 ### Why must the generated delta's of the application stack be rewritten by the producer?
 Simply writing all incoming delta messages to a file if the subject's `rdf:type` is of interest and offering those files to a consumer service may look as a simple and adequate solution at first sight, but it isn't. This simple approach has two downsides:
@@ -126,7 +126,7 @@ The path to follow from the resource URI to the concept scheme is specified in t
 This approach may lead to duplicate inserts of data (eg. relating a mandate to a bestuursorgaan will produce triples to insert every mandatee, person, person's birthdate, etc. related to the mandate, while some of this data may have been synced before), but it will never expose irrelevant data or sync too little data.
 
 ## Known limitations
-* The service keeps an in-memory cache of delta's to write to a file. If the service is killed before the delta's have been written to a file, the delta's are lost. Hence, shortening the `DELTA_INTERVAL`, decreases the chance to loose data on restart.
+* The service keeps an in-memory publication of delta's to write to a file. If the service is killed before the delta's have been written to a file, the delta's are lost. Hence, shortening the `DELTA_INTERVAL`, decreases the chance to loose data on restart.
 
 ## Roadmap
 * Add support for a prefix map in the export configuration

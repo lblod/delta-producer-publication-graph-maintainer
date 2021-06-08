@@ -18,7 +18,7 @@ export const PREFIXES = `
   PREFIX dbpedia: <http://dbpedia.org/resource/>
 `;
 
-export const ERROR_URI_PREFIX = 'http://redpencil.data.gift/id/cache-maintenance/error/';
+export const ERROR_URI_PREFIX = 'http://redpencil.data.gift/id/publication-maintenance/error/';
 
 export const JOBS_GRAPH =  process.env.JOBS_GRAPH || 'http://mu.semte.ch/graphs/system/jobs';
 export const JOB_TYPE = 'http://vocab.deri.ie/cogs#Job';
@@ -34,8 +34,8 @@ export const ERROR_TYPE= 'http://open-services.net/ns/core#Error';
 export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
 
 //task operation of interest
-export const HEALING_PATCH_CACHE_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchCacheGraph';
-export const INITIAL_CACHE_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/initialCacheGraphSyncing';
+export const HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchPublicationGraph';
+export const INITIAL_PUBLICATION_SYNC_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/initialPublicationGraphSyncing';
 
 //containers will keep track what has been healed etc for reports
 export const REMOVAL_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/RemovalContainer';
@@ -46,13 +46,13 @@ export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
 export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
-if(!process.env.CACHE_GRAPH)
-  throw `Expected 'CACHE_GRAPH' should be provided.`;
-export const CACHE_GRAPH = process.env.CACHE_GRAPH;
+if(!process.env.PUBLICATION_GRAPH)
+  throw `Expected 'PUBLICATION_GRAPH' should be provided.`;
+export const PUBLICATION_GRAPH = process.env.PUBLICATION_GRAPH;
 
-if(!process.env.INITIAL_CACHE_SYNC_JOB_OPERATION)
-  throw `Expected 'INITIAL_CACHE_SYNC_JOB_OPERATION' should be provided.`;
-export const INITIAL_CACHE_SYNC_JOB_OPERATION = process.env.INITIAL_CACHE_SYNC_JOB_OPERATION;
+if(!process.env.INITIAL_PUBLICATION_SYNC_JOB_OPERATION)
+  throw `Expected 'INITIAL_PUBLICATION_SYNC_JOB_OPERATION' should be provided.`;
+export const INITIAL_PUBLICATION_SYNC_JOB_OPERATION = process.env.INITIAL_PUBLICATION_SYNC_JOB_OPERATION;
 
 if(!process.env.HEALING_JOB_OPERATION)
   throw `Expected 'HEALING_JOB_OPERATION' should be provided.`;

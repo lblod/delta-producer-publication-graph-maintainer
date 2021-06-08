@@ -1,9 +1,9 @@
 import { sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
-import { INITIAL_CACHE_SYNC_JOB_OPERATION,
+import { INITIAL_PUBLICATION_SYNC_JOB_OPERATION,
          HEALING_JOB_OPERATION,
-         HEALING_PATCH_CACHE_GRAPH_TASK_OPERATION,
-         INITIAL_CACHE_SYNC_TASK_OPERATION,
+         HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
+         INITIAL_PUBLICATION_SYNC_TASK_OPERATION,
          STATUS_BUSY,
          STATUS_SCHEDULED,
          TASK_TYPE,
@@ -40,7 +40,7 @@ export async function isBlockingJobActive(){
         ${sparqlEscapeUri(STATUS_BUSY)}
       ))
       FILTER( ?operation IN (
-        ${sparqlEscapeUri(INITIAL_CACHE_SYNC_JOB_OPERATION)},
+        ${sparqlEscapeUri(INITIAL_PUBLICATION_SYNC_JOB_OPERATION)},
         ${sparqlEscapeUri(HEALING_JOB_OPERATION)}
        )
       )
@@ -66,11 +66,11 @@ async function isNewTaskOfInterest( taskUri ){
             adms:status ${sparqlEscapeUri(STATUS_SCHEDULED)}.
        }
       FILTER( ?taskOperation IN (
-         ${sparqlEscapeUri(INITIAL_CACHE_SYNC_TASK_OPERATION)},
-         ${sparqlEscapeUri(HEALING_PATCH_CACHE_GRAPH_TASK_OPERATION)}
+         ${sparqlEscapeUri(INITIAL_PUBLICATION_SYNC_TASK_OPERATION)},
+         ${sparqlEscapeUri(HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION)}
       ))
       FILTER( ?jobOperation IN (
-         ${sparqlEscapeUri(INITIAL_CACHE_SYNC_JOB_OPERATION)},
+         ${sparqlEscapeUri(INITIAL_PUBLICATION_SYNC_JOB_OPERATION)},
          ${sparqlEscapeUri(HEALING_JOB_OPERATION)}
        )
       )

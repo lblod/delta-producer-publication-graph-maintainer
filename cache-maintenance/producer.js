@@ -2,7 +2,7 @@ import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath } from '../lib/utils';
-import { LOG_DELTA_REWRITE, CACHE_GRAPH } from '../env-config';
+import { LOG_DELTA_REWRITE, PUBLICATION_GRAPH } from '../env-config';
 
 const EXPORT_CONFIG = require('/config/export.json');
 
@@ -49,11 +49,11 @@ export async function produceConceptSchemeDelta(delta) {
  * in the store since the data has been deleted. That's why the rdf:type for a URI is retrieved
  * from the triple store as well as from the delta changeset.
  *
- * TODO: verify if the cacheGraph could be a more robust replacement. I.e. in case of deletion,
- * both delta and cacheGraph may have their use. Both refer to outdated information.
- * -> why using the cacheGraph could be considered better: with delta, it might be that the changeset is
+ * TODO: verify if the publicationGraph could be a more robust replacement. I.e. in case of deletion,
+ * both delta and publicationGraph may have their use. Both refer to outdated information.
+ * -> why using the publicationGraph could be considered better: with delta, it might be that the changeset is
  * not atomic, meaning delete statements [<foo> <bar> <baz>, <foo> a <Type>] might be spread over 2 deltas,
- * while the type information is not present anymore in the source graph. In that sense the type cache might be outdated.
+ * while the type information is not present anymore in the source graph. In that sense the type publication might be outdated.
  *
  * Building the cache is purely based on rdf:type and does not take the path from
  * a resource to the export concept scheme into account.
@@ -393,7 +393,7 @@ async function exportResource(uri, config) {
   });
 
   for (let prop of config.properties) {
-    //Note the CacheGraph is blacklisted -> it should not ONLY reside in the cacheGraph
+    //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
     const result = await query(`
       SELECT DISTINCT ?o WHERE {
         GRAPH ?g {
@@ -437,7 +437,7 @@ function getChildConfigurations(config) {
 
 /**
  * Returns whether the given subject has a path to the export concept scheme for the given export configuration.
- * Note the CacheGraph is blacklisted -> it should not ONLY reside in the cacheGraph
+ * Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
 */
 async function hasPathToExportConceptScheme(subject, config) {
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
@@ -461,8 +461,8 @@ async function hasPathToExportConceptScheme(subject, config) {
 
 function buildGraphFilter(config){
   // Either we want the triple to resided in a spefic (set) of graphs,
-  // or not (exclusively) in the cache graph.
-  let filter = `FILTER(?g NOT IN (${sparqlEscapeUri(CACHE_GRAPH)}))`;
+  // or not (exclusively) in the publication graph.
+  let filter = `FILTER(?g NOT IN (${sparqlEscapeUri(PUBLICATION_GRAPH)}))`;
 
   if(config.graphsFilter.length){
 

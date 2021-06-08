@@ -1,17 +1,17 @@
 import { uuid, sparqlEscapeUri } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { produceConceptSchemeDelta } from './producer';
-import { CACHE_GRAPH } from '../env-config';
+import { PUBLICATION_GRAPH } from '../env-config';
 import { serializeTriple, storeError, batchedUpdate, batchedQuery } from '../lib/utils';
 import { chain } from 'lodash';
 
-//TODO: consider bringing the processing of cache under a job operation.
+//TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
-export async function updateCacheGraph( deltaPayload ){
+export async function updatePublicationGraph( deltaPayload ){
   try {
     let delta = await produceConceptSchemeDelta(deltaPayload);
     //To remove unncessary deltas, we filter them out.
-    const actualchanges = await filterActualChangesToCacheGraph(delta);
+    const actualchanges = await filterActualChangesToPublicationGraph(delta);
 
     const deletes = chain(actualchanges)
           .map(c => c.deletes)
@@ -26,11 +26,11 @@ export async function updateCacheGraph( deltaPayload ){
           .value();
 
     if(deletes.length){
-      await batchedUpdate(deletes, CACHE_GRAPH, 'DELETE');
+      await batchedUpdate(deletes, PUBLICATION_GRAPH, 'DELETE');
     }
 
     if(inserts.length){
-     await batchedUpdate(inserts, CACHE_GRAPH, 'INSERT');
+     await batchedUpdate(inserts, PUBLICATION_GRAPH, 'INSERT');
     }
 
   }
@@ -41,23 +41,23 @@ export async function updateCacheGraph( deltaPayload ){
   }
 }
 
-async function filterActualChangesToCacheGraph(delta){
-  // We need to fold the changeset to compare the effective wanted changes against the cache graph.
+async function filterActualChangesToPublicationGraph(delta){
+  // We need to fold the changeset to compare the effective wanted changes against the publication graph.
   // Suppose:
   //   - delta: [ deletes: s1, insert: s1]
   //   - targetGraph: { s1 }
   //   - An effective delete: remove a statement that was in the graph. Vice versa for effective insert.
   // Comparing the atomic delete from delta directly to the target graph, to conclude it is an effective change yields
   // wrong results, because the insert:s1 won't be considered an effective insert.
-  // I.e. we end up with delta: [ deletes: s1 ] to execute against the cache graph.
+  // I.e. we end up with delta: [ deletes: s1 ] to execute against the publication graph.
   const foldedDelta = await foldChangeSet(delta);
   const foldedDeletes = chain(foldedDelta).map(c => c.deletes).flatten().value();
   const foldedInserts = chain(foldedDelta).map(c => c.inserts).flatten().value();
   const actualDeletes = [];
 
-  //From this folded information, we now check wether the cache graph needs an update
+  //From this folded information, we now check wether the publication graph needs an update
   for(const triple of foldedDeletes){
-    if((await tripleExists(triple, CACHE_GRAPH)) ){
+    if((await tripleExists(triple, PUBLICATION_GRAPH)) ){
       actualDeletes.push(triple);
       await new Promise(r => setTimeout(r, 1000)); //performance consideration
     }
@@ -66,7 +66,7 @@ async function filterActualChangesToCacheGraph(delta){
   const actualInserts = [];
 
   for(const triple of foldedInserts){
-    if( !(await tripleExists(triple, CACHE_GRAPH)) ){
+    if( !(await tripleExists(triple, PUBLICATION_GRAPH)) ){
       actualInserts.push(triple);
       await new Promise(r => setTimeout(r, 1000));
     }
@@ -109,8 +109,8 @@ async function foldChangeSet( delta ){
   }
 
   else {
-    const tempDeleteGraph = `http://mu.semte.ch/graphs/delta-producer-cache-maintainer/folding/deletes/${uuid()}`;
-    const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-cache-maintainer/folding/inserts/${uuid()}`;
+    const tempDeleteGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/deletes/${uuid()}`;
+    const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
     try {
 
       await batchedUpdate(deletes.map(t => serializeTriple(t)), tempDeleteGraph, 'INSERT');

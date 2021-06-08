@@ -1,5 +1,5 @@
 import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
-import { CACHE_GRAPH,
+import { PUBLICATION_GRAPH,
          STATUS_FAILED,
          STATUS_SUCCESS,
          STATUS_BUSY,
@@ -21,7 +21,7 @@ export async function runInitialSyncTask( task ) {
       //TODO: perhaps include this extra predicate in the config file
       const extendedProperties = [...config.properties, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'];
       for(const property of extendedProperties){
-        await feedCacheGraphWithConceptSchemeProperty(CACHE_GRAPH,
+        await feedPublicationGraphWithConceptSchemeProperty(PUBLICATION_GRAPH,
                                                       conceptSchemeUri,
                                                       config,
                                                       config.type,
@@ -40,7 +40,7 @@ export async function runInitialSyncTask( task ) {
   }
 }
 
-async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptSchemeUri, config, type, property, graphsFilter){
+async function feedPublicationGraphWithConceptSchemeProperty(publicationGraph, conceptSchemeUri, config, type, property, graphsFilter){
   const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
 
   let selectQuery = '';
@@ -84,7 +84,7 @@ async function feedCacheGraphWithConceptSchemeProperty(cacheGraph, conceptScheme
   const sourceResult = await batchedQuery(selectQuery, 1000);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
   await batchedUpdate(sourceNTriples,
-                      cacheGraph,
+                      publicationGraph,
                       'INSERT',
                       500,
                       100,
