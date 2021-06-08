@@ -1,6 +1,6 @@
 {
   "name": "delta-producer-publication-graph-maintainer",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Microservice to maintain the publication graph during delta production process",
   "dependencies": {
     "@lblod/mu-auth-sudo": "git://github.com:lblod/mu-auth-sudo.git#73fba55a5cb1740fd18f5479759978b920b210af",
