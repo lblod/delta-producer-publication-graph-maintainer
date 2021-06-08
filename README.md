@@ -1,4 +1,4 @@
-# delta-producer-concept-scheme-based-publication-maintainer
+# delta-producer-publication-graph-maintainer
 
 Producer service resposible for:
   - maintaining the publication graph which acts as a source of truth for the delta diff files generation
@@ -6,13 +6,19 @@ Producer service resposible for:
   - excuting the initial sync of the publication graph
 
 ## Tutorials
+
+Note first: for the current implementation, the logic to consider what is a viable logical block to produce for consumer is based on a concept scheme filtering.
+All resources which need to be exported, need to have a path to this concept scheme. The path to the concept scheme acts as a filter on the resources to export.
+See also `Why must the generated delta's of the application stack be rewritten by the producer?` for a more detailed explanation.
+The logic of export may vary, we will need to make sure to keep reverse compatible extensions if needed in the future.
+
 ### Add the service to a stack
 Suppose you are interested in publishing all changes related to mandatarissen
 Add the service to your `docker-compose.yml`:
 
 ```
-  delta-producer-concept-scheme-based-publication-maintainer-mandatarissen:
-    image: lblod/delta-producer-concept-scheme-based-publication-maintainer
+  delta-producer-publication-graph-maintainer-mandatarissen:
+    image: lblod/delta-producer-publication-graph-maintainer
     volumes:
       - ./data/files:/share
       - ./config/producer/mandatarissen:/config
@@ -112,7 +118,7 @@ Endpoint that receives delta's from the [delta-notifier](https://github.com/mu-s
 
 ## Discussions
 ### What is a publication graph anyway?
-The publication graph acts as an interemediate step in the delta (file) generation process. This has some benefits. TODO
+The publication graph acts as an interemediate step in the delta (file) generation process. This graph represents the state of the data that should be consumed by a consumer. The serialization of the updates, i.e. how we inform or publish additions or removals to the graph, is left to other services. 
 
 ### Why must the generated delta's of the application stack be rewritten by the producer?
 Simply writing all incoming delta messages to a file if the subject's `rdf:type` is of interest and offering those files to a consumer service may look as a simple and adequate solution at first sight, but it isn't. This simple approach has two downsides:
