@@ -61,9 +61,13 @@ async function feedPublicationGraphWithConceptSchemeProperty(publicationGraph, c
         GRAPH ?g {
           ?subject ?predicate ?object.
         }
-
         FILTER ( ${graphsFilterStr} )
-       }
+        FILTER NOT EXISTS {
+          GRAPH ${sparqlEscapeUri(publicationGraph)}{
+            ?subject ?predicate ?object.
+          }
+        }
+      }
     `;
 
   }
@@ -76,6 +80,12 @@ async function feedPublicationGraphWithConceptSchemeProperty(publicationGraph, c
         ?subject a ${sparqlEscapeUri(type)}.
         ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
         ?subject ?predicate ?object.
+
+        FILTER NOT EXISTS {
+          GRAPH ${sparqlEscapeUri(publicationGraph)}{
+            ?subject ?predicate ?object.
+          }
+        }
       }
     `;
 
