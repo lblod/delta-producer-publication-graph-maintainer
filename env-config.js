@@ -46,6 +46,9 @@ export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
 export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
+//mainly for debugging purposes
+export const WAIT_FOR_INITIAL_SYNC = process.env.WAIT_FOR_INITIAL_SYNC == 'false' ? false : true ;
+
 if(!process.env.PUBLICATION_GRAPH)
   throw `Expected 'PUBLICATION_GRAPH' should be provided.`;
 export const PUBLICATION_GRAPH = process.env.PUBLICATION_GRAPH;

@@ -1,9 +1,9 @@
 import { app, errorHandler } from 'mu';
 import bodyParser from 'body-parser';
 import { updatePublicationGraph } from './publication-graph-maintenance/main';
-import { doesDeltaContainNewTaskToProcess, isBlockingJobActive} from './jobs-processing/utils' ;
+import { doesDeltaContainNewTaskToProcess, isBlockingJobActive, hasInitialSyncRun } from './jobs-processing/utils' ;
 import { executeScheduledTask } from './jobs-processing/main';
-import { LOG_INCOMING_DELTA, PUBLICATION_GRAPH } from './env-config';
+import { LOG_INCOMING_DELTA, PUBLICATION_GRAPH, WAIT_FOR_INITIAL_SYNC } from './env-config';
 import { chain } from 'lodash';
 import { ProcessingQueue } from './lib/processing-queue';
 import { storeError } from './lib/utils';
@@ -48,6 +48,15 @@ app.post('/delta', async function( req, res ) {
       //    by the delta-file service itself
       //  - Some kind of multi lock system, where all the services involved should tell they are ready to be healed.
       console.info('Blocking jobs are active, skipping incoming deltas');
+    }
+    else if(WAIT_FOR_INITIAL_SYNC && !await hasInitialSyncRun() ){
+      // To produce and publish consistent deltas an initial sync needs to have run.
+      // The initial sync job produces a dump file which provides a cartesian starting point for the delta diff files to make sense on.
+      // It doesn't produce delta diff files, because performance.
+      // All consumers are assumed to first ingest the delta dump, before consuming the diff files.
+      // If delta-diff files are published before the initial sync and consumers already have ingested these, we run into troubles.
+      // Note: WAIT_FOR_INITIAL_SYNC is mainly meant for debugging purposes, defaults to true
+      console.info('Initial sync did not run yet, skipping incoming deltas');
     }
     else {
       //normal operation mode: maintaining the publication graph

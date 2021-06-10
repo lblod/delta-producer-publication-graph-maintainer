@@ -4,6 +4,7 @@ import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
          HEALING_JOB_OPERATION,
          HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
          INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION,
+         STATUS_SUCCESS,
          STATUS_BUSY,
          STATUS_SCHEDULED,
          TASK_TYPE,
@@ -24,6 +25,21 @@ export async function doesDeltaContainNewTaskToProcess( deltaPayload ){
   }
 
   return containsNewTask;
+}
+
+export async function hasInitialSyncRun(){
+  const queryString = `
+    ${PREFIXES}
+    SELECT DISTINCT ?job WHERE {
+      GRAPH ?g {
+        ?job a ${sparqlEscapeUri(JOB_TYPE)};
+             task:operation ${sparqlEscapeUri(INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION)};
+             adms:status ${sparqlEscapeUri(STATUS_SUCCESS)}.
+      }
+    }
+  `;
+  const result = await query(queryString);
+  return result.results.bindings.length;
 }
 
 export async function isBlockingJobActive(){
