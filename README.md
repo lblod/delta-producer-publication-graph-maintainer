@@ -111,6 +111,7 @@ The following enviroment variables can be optionally configured:
 * `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
 *  `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
 *  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default. 
+*  `WAIT_FOR_INITIAL_SYNC`: wait for initial sync. Defaults to 'true', mainly meant to disable for debugging purposes
 
 ### API
 #### POST /delta
