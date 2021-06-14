@@ -11,7 +11,6 @@ import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
        } from '../env-config';
 
 import { loadTask } from '../lib/task';
-import { runInitialSyncTask } from './pipeline-initial-sync';
 import { runHealingTask } from './pipeline-healing';
 import { parseResult, storeError } from '../lib/utils';
 
