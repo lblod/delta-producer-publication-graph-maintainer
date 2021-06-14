@@ -1,4 +1,5 @@
 import { uuid, sparqlEscapeUri, sparqlEscapeString } from 'mu';
+import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { STATUS_BUSY,
          STATUS_FAILED,
          STATUS_SUCCESS,
@@ -157,10 +158,14 @@ async function getPublicationTriples(property, publicationGraph){
      }
   `;
 
-  const publicationResult = await batchedQuery(selectFromPublicationGraph,
-                                               1000,
-                                              USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
-  const publicationNTriples = publicationResult.map(t => serializeTriple(t));
+  //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
+  const result = await query(selectFromPublicationGraph, {}, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
+  let publicationNTriples = [];
+
+  if(result.results && result.results.bindings && result.results.bindings.length){
+    const triples = result.results.bindings;
+    publicationNTriples = triples.map(t => serializeTriple(t));
+  }
 
   return publicationNTriples;
 
@@ -211,11 +216,14 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
     `;
   }
 
-  //Note: even if the ordering might be slow, we need ordered triples to compare against on file
-  const sourceResult = await batchedQuery(selectFromDatabase,
-                                          1000,
-                                          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
-  const sourceNTriples = sourceResult.map(t => serializeTriple(t));
+  //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
+  const result = await query(selectFromDatabase, {}, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
+  let sourceNTriples = [];
+
+  if(result.results && result.results.bindings && result.results.bindings.length){
+    const triples = result.results.bindings;
+    sourceNTriples = triples.map(t => serializeTriple(t));
+  }
 
   return sourceNTriples;
 }
@@ -224,11 +232,14 @@ function diffNTriples(target, source) {
   //Note: this only works correctly if triples have same lexical notation.
   //So think about it, when copy pasting :-)
   const diff = { additions: [], removals: [] };
-  const targetString = target.join('\n');
-  const sourceString = source.join('\n');
 
-  diff.additions = target.filter(nt => sourceString.indexOf(nt) < 0);
-  diff.removals = source.filter(nt => targetString.indexOf(nt) < 0);
+  const sortedTarget = target.sort();
+  const sortedSource = source.sort();
+  const targetString = sortedTarget.join('\n');
+  const sourceString = sortedSource.join('\n');
+
+  diff.additions = sortedTarget.filter(nt => sourceString.indexOf(nt) < 0);
+  diff.removals = sortedSource.filter(nt => targetString.indexOf(nt) < 0);
 
   return diff;
 }
