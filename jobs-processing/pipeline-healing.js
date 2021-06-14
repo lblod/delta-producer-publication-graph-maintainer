@@ -42,7 +42,7 @@ export async function runHealingTask( task ){
     for(const property of Object.keys(propertyMap)){
 
       const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
-      const publicationGraphTriples = await getPublicationdTriples(property, PUBLICATION_GRAPH);
+      const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
       const diffs = diffNTriples(sourceTriples, publicationGraphTriples);
 
       accumulatedDiffs.removals = [ ...accumulatedDiffs.removals, ...diffs.removals ];
@@ -130,7 +130,7 @@ async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
-async function getPublicationdTriples(property, publicationGraph){
+async function getPublicationTriples(property, publicationGraph){
   const selectFromPublicationGraph = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
