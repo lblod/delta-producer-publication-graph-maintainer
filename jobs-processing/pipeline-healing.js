@@ -13,7 +13,7 @@ import { STATUS_BUSY,
          MU_CALL_SCOPE_ID_INITIAL_SYNC
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
-import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
+import { sparqlEscapePredicate, batchedUpdate, serializeTriple } from '../lib/utils';
 import { writeTtlFile } from  '../lib/file-helpers';
 import { uniq } from 'lodash';
 
