@@ -8,7 +8,8 @@ import { STATUS_BUSY,
          REPORTING_FILES_GRAPH,
          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
          VIRTUOSO_ENDPOINT,
-         MU_AUTH_ENDPOINT
+         MU_AUTH_ENDPOINT,
+         MU_CALL_SCOPE_ID_INITIAL_SYNC
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
 import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
@@ -17,7 +18,7 @@ import { uniq } from 'lodash';
 
 const EXPORT_CONFIG = require('/config/export.json');
 
-export async function runHealingTask( task ){
+export async function runHealingTask( task, isInitialSync ){
   try {
     await updateTaskStatus(task, STATUS_BUSY);
 
@@ -54,13 +55,25 @@ export async function runHealingTask( task ){
     }
 
     if(accumulatedDiffs.removals.length){
-      await batchedUpdate(accumulatedDiffs.removals, PUBLICATION_GRAPH, 'DELETE', 500);
+      await batchedUpdate(accumulatedDiffs.removals,
+                          PUBLICATION_GRAPH,
+                          'DELETE',
+                          500,
+                          100,
+                          isInitialSync ? { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC } : {}
+                         );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
     }
 
     if(accumulatedDiffs.additions.length){
-      await batchedUpdate(accumulatedDiffs.additions, PUBLICATION_GRAPH, 'INSERT', 500);
+      await batchedUpdate(accumulatedDiffs.additions,
+                          PUBLICATION_GRAPH,
+                          'INSERT',
+                          500,
+                          100,
+                          isInitialSync ? { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC } : {}
+                         );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
 

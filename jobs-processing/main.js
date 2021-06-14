@@ -26,7 +26,7 @@ export async function executeScheduledTask(){
 
     if(syncTaskUri){
       const task = await loadTask(syncTaskUri);
-      await runInitialSyncTask(task);
+      await runHealingTask(task, true);
     }
     else if(healingTaskUri){
       const task = await loadTask(healingTaskUri);
