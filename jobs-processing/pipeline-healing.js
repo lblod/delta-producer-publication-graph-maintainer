@@ -93,7 +93,8 @@ function groupPathToConceptSchemePerProperty(config){
   const result = {};
   for( const configEntry of config){
     //TODO: perhaps include this extra predicate in the config file
-    const extendedProperties = [...configEntry.properties, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'];
+    let extendedProperties = [...configEntry.properties, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'];
+    extendedProperties = uniq(extendedProperties); //TODO: perhaps crash instead of being the silent fixer
     for(const property of extendedProperties){
       if(result[property]){
         result[property].push(
