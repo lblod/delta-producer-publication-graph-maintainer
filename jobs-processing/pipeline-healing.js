@@ -160,7 +160,9 @@ async function getPublicationTriples(property, publicationGraph){
   `;
 
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const result = await query(selectFromPublicationGraph, {}, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
+  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  console.log(`Hitting database ${endpoint} with expensive query`);
+  const result = await query(selectFromPublicationGraph, {}, endpoint);
   let publicationNTriples = [];
 
   if(result.results && result.results.bindings && result.results.bindings.length){
@@ -218,7 +220,9 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
   }
 
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const result = await query(selectFromDatabase, {}, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
+  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  console.log(`Hitting database ${endpoint} with expensive query`);
+  const result = await query(selectFromDatabase, {}, endpoint);
   let sourceNTriples = [];
 
   if(result.results && result.results.bindings && result.results.bindings.length){
