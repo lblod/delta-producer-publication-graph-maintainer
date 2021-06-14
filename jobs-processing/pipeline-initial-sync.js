@@ -3,7 +3,10 @@ import { PUBLICATION_GRAPH,
          STATUS_FAILED,
          STATUS_SUCCESS,
          STATUS_BUSY,
-         MU_CALL_SCOPE_ID_INITIAL_SYNC
+         MU_CALL_SCOPE_ID_INITIAL_SYNC,
+         USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
+         VIRTUOSO_ENDPOINT,
+         MU_AUTH_ENDPOINT
        } from '../env-config';
 import { updateTaskStatus, appendTaskError } from '../lib/task';
 import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
@@ -91,7 +94,9 @@ async function feedPublicationGraphWithConceptSchemeProperty(publicationGraph, c
 
   }
 
-  const sourceResult = await batchedQuery(selectQuery, 1000);
+  const sourceResult = await batchedQuery(selectQuery,
+                                          1000,
+                                          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
   await batchedUpdate(sourceNTriples,
                       publicationGraph,

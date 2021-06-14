@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "description": "Microservice to maintain the publication graph during delta production process",
   "dependencies": {
-    "@lblod/mu-auth-sudo": "git://github.com:lblod/mu-auth-sudo.git#73fba55a5cb1740fd18f5479759978b920b210af",
+    "@lblod/mu-auth-sudo": "git://github.com:lblod/mu-auth-sudo.git#bdbd063dc8e4d3a891c713a0077a54bc8a010ca1",
     "fs-extra": "^8.0.1",
     "lodash": "^4.17.11"
   },
