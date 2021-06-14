@@ -5,7 +5,10 @@ import { STATUS_BUSY,
          PUBLICATION_GRAPH,
          INSERTION_CONTAINER,
          REMOVAL_CONTAINER,
-         REPORTING_FILES_GRAPH
+         REPORTING_FILES_GRAPH,
+         USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
+         VIRTUOSO_ENDPOINT,
+         MU_AUTH_ENDPOINT
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
 import { sparqlEscapePredicate, batchedQuery, batchedUpdate, serializeTriple } from '../lib/utils';
@@ -141,7 +144,9 @@ async function getPublicationTriples(property, publicationGraph){
      }
   `;
 
-  const publicationResult = await batchedQuery(selectFromPublicationGraph, 1000);
+  const publicationResult = await batchedQuery(selectFromPublicationGraph,
+                                               1000,
+                                              USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
   const publicationNTriples = publicationResult.map(t => serializeTriple(t));
 
   return publicationNTriples;
@@ -194,7 +199,9 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
   }
 
   //Note: even if the ordering might be slow, we need ordered triples to compare against on file
-  const sourceResult = await batchedQuery(selectFromDatabase, 1000);
+  const sourceResult = await batchedQuery(selectFromDatabase,
+                                          1000,
+                                          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT);
   const sourceNTriples = sourceResult.map(t => serializeTriple(t));
 
   return sourceNTriples;
