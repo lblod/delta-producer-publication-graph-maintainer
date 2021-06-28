@@ -190,9 +190,8 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
 
   const triplesToInsert = [];
   for (let { uri, config } of impactedResources) {
-    const id = [config.type, ...config.pathToConceptScheme].join('-');
-    if (!processedResources.includes(id)) {
-      processedResources.push(id); // make sure to handle each resource only once
+    if (!processedResources.includes(uri)) {
+      processedResources.push(uri); // make sure to handle each resource only once
       const isInScope = await hasPathToExportConceptScheme(uri, config);
       if (isInScope) {
         if (LOG_DELTA_REWRITE)
@@ -289,9 +288,8 @@ async function enrichDeletedChangeset(changeSet, typeCache, processedResources) 
 
   const triplesToDelete = [];
   for (let { uri, config } of impactedResources) {
-    const id = [config.type, ...config.pathToConceptScheme].join('-');
-    if (!processedResources.includes(id)) {
-      processedResources.push(id); // make sure to handle each resource only once
+    if (!processedResources.includes(uri)) {
+      processedResources.push(uri); // make sure to handle each resource only once
       const isOutOfScope = !(await hasPathToExportConceptScheme(uri, config));
       if (isOutOfScope) {
         if (LOG_DELTA_REWRITE)
