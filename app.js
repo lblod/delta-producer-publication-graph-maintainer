@@ -14,7 +14,7 @@ app.use( bodyParser.json( { type: function(req) { return /^application\/json/.te
 
 app.post('/delta', async function( req, res ) {
   try {
-    const body = filterPublicationGraphUpdatingDelta(req.body); //Temp workaround
+    const body = req.body;
 
     if (LOG_INCOMING_DELTA)
       console.log(`Receiving delta ${JSON.stringify(body)}`);
@@ -73,29 +73,3 @@ app.post('/delta', async function( req, res ) {
 });
 
 app.use(errorHandler);
-
-
-/*
- * Temporary workaround to ignore deltas generated from self
- * (Note: only visible when containers run in shared network)
- */
-function filterPublicationGraphUpdatingDelta(delta){
-  const deletes = chain(delta)
-        .map(c => c.deletes)
-        .flatten()
-        .filter(t => t.graph.value !== PUBLICATION_GRAPH)
-        .value();
-
-  const inserts = chain(delta)
-        .map(c => c.inserts)
-        .flatten()
-        .filter(t => t.graph.value !== PUBLICATION_GRAPH)
-        .value();
-
-  if(!(inserts.length || deletes.length)){
-    return [];
-  }
-  else {
-    return [ { deletes, inserts } ];
-  }
-}

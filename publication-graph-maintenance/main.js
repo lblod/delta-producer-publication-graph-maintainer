@@ -1,7 +1,7 @@
 import { uuid, sparqlEscapeUri } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { produceConceptSchemeDelta } from './producer';
-import { PUBLICATION_GRAPH } from '../env-config';
+import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE } from '../env-config';
 import { serializeTriple, storeError, batchedUpdate, batchedQuery } from '../lib/utils';
 import { chain } from 'lodash';
 
@@ -26,11 +26,23 @@ export async function updatePublicationGraph( deltaPayload ){
           .value();
 
     if(deletes.length){
-      await batchedUpdate(deletes, PUBLICATION_GRAPH, 'DELETE');
+      await batchedUpdate(deletes,
+                          PUBLICATION_GRAPH,
+                          'DELETE',
+                          1000,
+                          100,
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                         );
     }
 
     if(inserts.length){
-     await batchedUpdate(inserts, PUBLICATION_GRAPH, 'INSERT');
+      await batchedUpdate(inserts,
+                          PUBLICATION_GRAPH,
+                          'INSERT',
+                          1000,
+                          100,
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                         );
     }
 
   }
@@ -113,8 +125,20 @@ async function foldChangeSet( delta ){
     const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
     try {
 
-      await batchedUpdate(deletes.map(t => serializeTriple(t)), tempDeleteGraph, 'INSERT');
-      await batchedUpdate(inserts.map(t => serializeTriple(t)), tempInsertGraph, 'INSERT');
+      await batchedUpdate(deletes.map(t => serializeTriple(t)),
+                          tempDeleteGraph,
+                          'INSERT',
+                          1000,
+                          100,
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                         );
+      await batchedUpdate(inserts.map(t => serializeTriple(t)),
+                          tempInsertGraph,
+                          'INSERT',
+                          1000,
+                          100,
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                         );
 
       const queryForFolding = ( sourceGraph, targetGraph ) => {
         return `
@@ -152,8 +176,8 @@ async function foldChangeSet( delta ){
         `;
       };
 
-      await update(cleanUpQuery(tempDeleteGraph));
-      await update(cleanUpQuery(tempInsertGraph));
+      await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+      await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
     }
 
   }

@@ -44,7 +44,11 @@ export const INSERTION_CONTAINER = 'http://redpencil.data.gift/id/concept/Healin
 export const REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
 export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
-export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
+export const MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = process.env.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
+  || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
+
+export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC
+  || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
 //Let's hide this feature, but currently mu-auth cuts off the connection if it takes too long. (1.5 min queries)
 //Difficult to reproduce, it depends on what is in the DB, but is systematic once the DB is that state.

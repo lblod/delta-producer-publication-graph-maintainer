@@ -10,7 +10,8 @@ import { STATUS_BUSY,
          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
          VIRTUOSO_ENDPOINT,
          MU_AUTH_ENDPOINT,
-         MU_CALL_SCOPE_ID_INITIAL_SYNC
+         MU_CALL_SCOPE_ID_INITIAL_SYNC,
+         MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
 import { sparqlEscapePredicate, batchedUpdate, serializeTriple } from '../lib/utils';
@@ -55,13 +56,18 @@ export async function runHealingTask( task, isInitialSync ){
 
     }
 
+    let extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
+    if(isInitialSync){
+      extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
+    }
+
     if(accumulatedDiffs.removals.length){
       await batchedUpdate(accumulatedDiffs.removals,
                           PUBLICATION_GRAPH,
                           'DELETE',
                           500,
                           100,
-                          isInitialSync ? { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC } : {}
+                          extraHeaders
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
@@ -73,7 +79,7 @@ export async function runHealingTask( task, isInitialSync ){
                           'INSERT',
                           500,
                           100,
-                          isInitialSync ? { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC } : {}
+                          extraHeaders
                          );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
