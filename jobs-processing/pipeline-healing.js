@@ -14,11 +14,11 @@ import { STATUS_BUSY,
          MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
        } from '../env-config';
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
-import { sparqlEscapePredicate, batchedUpdate, serializeTriple } from '../lib/utils';
+import { sparqlEscapePredicate, batchedUpdate, serializeTriple, loadConfiguration } from '../lib/utils';
 import { writeTtlFile } from  '../lib/file-helpers';
 import { uniq } from 'lodash';
 
-const EXPORT_CONFIG = require('/config/export.json');
+const EXPORT_CONFIG = loadConfiguration();
 
 export async function runHealingTask( task, isInitialSync ){
   try {

@@ -1,10 +1,10 @@
 import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
-import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath } from '../lib/utils';
+import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath, loadConfiguration } from '../lib/utils';
 import { LOG_DELTA_REWRITE, PUBLICATION_GRAPH } from '../env-config';
 
-const EXPORT_CONFIG = require('/config/export.json');
+const EXPORT_CONFIG = loadConfiguration();
 
 // TODO add support for a prefix map in the export configuration
 //      preprocess the imported config by resolving all prefixed URIs with full URIs
