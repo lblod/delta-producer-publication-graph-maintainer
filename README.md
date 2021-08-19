@@ -7,16 +7,13 @@ Producer service resposible for:
 
 ## Tutorials
 
-Note first: for the current implementation, the logic to consider what is a viable logical block to produce for consumer is based on a concept scheme filtering.
-All resources which need to be exported, need to have a path to this concept scheme. The path to the concept scheme acts as a filter on the resources to export.
-See also `Why must the generated delta's of the application stack be rewritten by the producer?` for a more detailed explanation.
-The logic of export may vary, we will need to make sure to keep reverse compatible extensions if needed in the future.
+The production of what is considered an interesting delta has two modes. A 'simple mode' and concept-base filtering.
 
 ### Add the service to a stack
 Suppose you are interested in publishing all changes related to mandatarissen
 Add the service to your `docker-compose.yml`:
 
-```
+```yaml
   delta-producer-publication-graph-maintainer-mandatarissen:
     image: lblod/delta-producer-publication-graph-maintainer
     volumes:
@@ -29,6 +26,61 @@ Add the service to your `docker-compose.yml`:
       INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalPublicationGraphSyncing/mandatarissen'
 
 ```
+Next, configure the delta-notifier in `./config/delta/rules.js` to send delta messages for all changes:
+
+```javascript
+export default [
+  {
+    match: {
+      // anything -> note you can tweak the performance here by filtering on graphs if you need to.
+    },
+    callback: {
+      url: 'http://delta-producer-concept-scheme-based-publication-maintainer-mandatarissen/delta',
+      method: 'POST'
+    },
+    options: {
+      resourceFormat: 'v0.0.1',
+      gracePeriod: 1000,
+      ignoreFromSelf: true
+    }
+  }
+
+  // Other delta listeners
+]
+```
+### configuration file
+
+## simple mode
+By example:
+
+```
+{
+  "export": [
+    {
+      "type": "http://data.vlaanderen.be/ns/besluit#Agendapunt",
+      "graphsFilter": [ "http://mu.semte.ch/graphs/public" ],
+      "properties": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+        "http://mu.semte.ch/vocabularies/core/uuid",
+        "http://data.vlaanderen.be/ns/besluit#aangebrachtNa",
+        "http://purl.org/dc/terms/description",
+        "http://data.vlaanderen.be/ns/besluit#geplandOpenbaar",
+        "http://data.vlaanderen.be/ns/besluit#heeftOntwerpbesluit",
+        "http://purl.org/dc/terms/reference",
+        "http://purl.org/dc/terms/title",
+        "http://data.vlaanderen.be/ns/besluit#Agendapunt.type"
+      ]
+    }
+  ]
+}
+```
+The simple mode publishes evereything that matches the pattern above. Hence you might expose too much data or even not enough, please refer to `concept scheme filtering` for more complex scenarios.
+
+### concept scheme filtering
+Here, the logic to consider what is a viable logical block to produce for consumer is based on a concept scheme filtering.
+All resources which need to be exported, need to have a path to this concept scheme. The path to the concept scheme acts as a filter on the resources to export.
+See also `Why must the generated delta's of the application stack be rewritten by the producer?` for a more detailed explanation.
+The logic of export may vary, we will need to make sure to keep reverse compatible extensions if needed in the future.
 
 Add a migration with the export concept scheme to `./config/migrations/20200421151800-add-loket-mandatarissen-concept-scheme.sparql`
 
@@ -49,27 +101,34 @@ INSERT DATA {
 }
 ```
 
-Next, configure the delta-notifier in `./config/delta/rules.js` to send delta messages for all changes:
-```javascript
-export default [
-  {
-    match: {
-      // anything
-    },
-    callback: {
-      url: 'http://delta-producer-concept-scheme-based-publication-maintainer-mandatarissen/delta',
-      method: 'POST'
-    },
-    options: {
-      resourceFormat: 'v0.0.1',
-      gracePeriod: 1000,
-      ignoreFromSelf: true
-    }
-  }
+A partial file might look like:
 
-  // Other delta listeners
-]
+```json
+{
+  "conceptScheme": "http://lblod.data.gift/concept-schemes/0887b850-b810-40d4-be0f-cafd01d3259b",
+  "export": [
+    {
+      "type": "http://mu.semte.ch/vocabularies/ext/MandatarisStatusCode",
+      "graphsFilter": [ "http://mu.semte.ch/graphs/public" ],
+      "pathToConceptScheme": [
+        "^http://data.vlaanderen.be/ns/mandaat#status",
+        "http://www.w3.org/ns/org#holds",
+        "^http://www.w3.org/ns/org#hasPost",
+        "http://data.vlaanderen.be/ns/mandaat#isTijdspecialisatieVan",
+        "http://data.vlaanderen.be/ns/besluit#classificatie",
+        "http://www.w3.org/2004/02/skos/core#inScheme"
+      ],
+      "properties": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+        "http://mu.semte.ch/vocabularies/core/uuid",
+        "http://www.w3.org/2004/02/skos/core#prefLabel",
+        "http://www.w3.org/2004/02/skos/core#scopeNote"
+      ]
+    }
+    ]
+}
 ```
+
 
 Restart the updated services
 ```
@@ -110,7 +169,7 @@ The following enviroment variables can be optionally configured:
 * `INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
 * `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
 *  `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
-*  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default. 
+*  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default.
 *  `WAIT_FOR_INITIAL_SYNC`: wait for initial sync. Defaults to 'true', mainly meant to disable for debugging purposes
 * `MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE (default: http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance)`: can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
 * `MU_CALL_SCOPE_ID_INITIAL_SYNC (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
@@ -121,7 +180,7 @@ Endpoint that receives delta's from the [delta-notifier](https://github.com/mu-s
 
 ## Discussions
 ### What is a publication graph anyway?
-The publication graph acts as an interemediate step in the delta (file) generation process. This graph represents the state of the data that should be consumed by a consumer. The serialization of the updates, i.e. how we inform or publish additions or removals to the graph, is left to other services. 
+The publication graph acts as an interemediate step in the delta (file) generation process. This graph represents the state of the data that should be consumed by a consumer. The serialization of the updates, i.e. how we inform or publish additions or removals to the graph, is left to other services.
 
 ### Why must the generated delta's of the application stack be rewritten by the producer?
 Simply writing all incoming delta messages to a file if the subject's `rdf:type` is of interest and offering those files to a consumer service may look as a simple and adequate solution at first sight, but it isn't. This simple approach has two downsides:
@@ -139,3 +198,8 @@ This approach may lead to duplicate inserts of data (eg. relating a mandate to a
 
 ## Roadmap
 * Add support for a prefix map in the export configuration
+* A couple of cases are not supported when producing mini deltas
+  - multi typing of subjects need further elaboration
+  - incoming deltas are not checked for graph, this might lead for weird behaviour (corrected by the healing process though).
+  - Deletion of triples and related resources doesn't work, but more importantly needs further thinking.
+    - In some cases we might produce conflicting information, e.g a person both being a mandataris and leidinggevenden.
