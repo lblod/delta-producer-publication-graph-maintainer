@@ -1,6 +1,6 @@
 import { uuid, sparqlEscapeUri } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
-import { produceConceptSchemeDelta } from './producer';
+import { produceDelta } from './producer';
 import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE } from '../env-config';
 import { serializeTriple, storeError, batchedUpdate, batchedQuery } from '../lib/utils';
 import { chain } from 'lodash';
@@ -9,7 +9,7 @@ import { chain } from 'lodash';
 // It feels a bit like over kill right now to do so.
 export async function updatePublicationGraph( deltaPayload ){
   try {
-    let delta = await produceConceptSchemeDelta(deltaPayload);
+    let delta = await produceDelta(deltaPayload);
     //To remove unncessary deltas, we filter them out.
     const actualchanges = await filterActualChangesToPublicationGraph(delta);
 

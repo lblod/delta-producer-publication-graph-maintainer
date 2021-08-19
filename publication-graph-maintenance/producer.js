@@ -12,7 +12,7 @@ const EXPORT_CONFIG = loadConfiguration();
 /**
  * Rewriting the incoming delta message to a delta message relevant for the conceptScheme export
 */
-export async function produceConceptSchemeDelta(delta) {
+export async function produceDelta(delta) {
   const updatedDeltas = [];
 
   for (let changeSet of delta) {
@@ -129,7 +129,7 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
     const exportConfigurations = typeCache.filter(e => e.uri == subject).map(e => e.config);
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        const isInScope = await hasPathToExportConceptScheme(subject, config);
+        const isInScope = await isInScopeOfConfiguration(subject, config);
         const predicate = triple.predicate.value;
         const isConfiguredForExport = predicate == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || config.properties.includes(predicate);
 
@@ -192,7 +192,7 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
   for (let { uri, config } of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isInScope = await hasPathToExportConceptScheme(uri, config);
+      const isInScope = await isInScopeOfConfiguration(uri, config);
       if (isInScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching insert changeset with export of resource <${uri}>.`);
@@ -290,7 +290,7 @@ async function enrichDeletedChangeset(changeSet, typeCache, processedResources) 
   for (let { uri, config } of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isOutOfScope = !(await hasPathToExportConceptScheme(uri, config));
+      const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
       if (isOutOfScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching delete changeset with export of resource <${uri}>.`);
@@ -434,17 +434,28 @@ function getChildConfigurations(config) {
 }
 
 /**
- * Returns whether the given subject has a path to the export concept scheme for the given export configuration.
- * Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+ * Returns whether the given subject is controlled by the configuration:
+ * Note:
+ *   this is based on the graphsFilter and conceptScheme, not the type.
+ *   This function expects this check on type has been performed previously..
+ *   TODO: refactor this tacit assumption. But there is a complexity with deletion, which need furhter thinking.
+ * Note 2:
+ *    the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
 */
-async function hasPathToExportConceptScheme(subject, config) {
-  const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
+async function isInScopeOfConfiguration(subject, config) {
+
+  let pathToConceptSchemeString = '';
+
+  if(config.pathToConceptScheme.length){
+    const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
+    pathToConceptSchemeString = `?subject ${predicatePath} ${sparqlEscapeUri(EXPORT_CONFIG.conceptScheme)}.`;
+  }
 
   const result = await query(`
     SELECT ?p WHERE {
       BIND(${sparqlEscapeUri(subject)} as ?s)
 
-      ?s ${predicatePath} ${sparqlEscapeUri(EXPORT_CONFIG.conceptScheme)}.
+      ${pathToConceptSchemeString}.
 
       GRAPH ?g {
        ?s ?p ?o .

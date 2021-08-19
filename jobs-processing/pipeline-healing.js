@@ -35,8 +35,10 @@ export async function runHealingTask( task, isInitialSync ){
 
     //Some explanation:
     // The triples to push to the publication graph should be equal to
-    // - all triples whose ?s link to a the conceptscheme (through pathToConceptScheme) and
-    // - whose ?p match the properties defined in the EXPORT_CONFIG and
+    // - all triples whose ?s link to a the conceptscheme (through pathToConceptScheme)
+    //   (note if no path defined, then this condition returns true) AND
+    // - whose ?p match the properties defined in the EXPORT_CONFIG AND
+    // - who match any of the configured types AND
     // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predfined graphs)
     //
     // In the first step, we build this set (say set A), looking for triples matching the above conditions for a specic ?p.
@@ -103,22 +105,12 @@ function groupPathToConceptSchemePerProperty(config){
     extendedProperties = uniq(extendedProperties); //TODO: perhaps crash instead of being the silent fixer
     for(const property of extendedProperties){
       if(result[property]){
-        result[property].push(
-          {
-            pathToConceptScheme: configEntry.pathToConceptScheme,
-            graphsFilter: configEntry.graphsFilter
-          }
-        );
+        result[property].push(configEntry);
       }
       else {
-        result[property] =
-        [
-          {
-            pathToConceptScheme: configEntry.pathToConceptScheme,
-            graphsFilter: configEntry.graphsFilter
-          }
-        ];
+        result[property] = [ configEntry ];
       }
+
     }
   }
   return result;
@@ -137,8 +129,7 @@ async function createResultsContainer( task, nTriples, subject, fileName ){
 async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
   let sourceTriples = [];
   for(const config of propertyMap[property]){
-    const scopedSourceTriples = await getScopedSourceTriples(config.pathToConceptScheme,
-                                                             config.graphsFilter || [],
+    const scopedSourceTriples = await getScopedSourceTriples(config,
                                                              property,
                                                              conceptSchemeUri,
                                                              PUBLICATION_GRAPH,
@@ -184,9 +175,15 @@ async function getPublicationTriples(property, publicationGraph){
  * Gets the source triples for a property and a pathToConceptScheme from the database,
  * for all graphs except the ones exclusively residing in the publication graph
  */
-async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, property, conceptSchemeUri, publicationGraph, exportConfig ){
+async function getScopedSourceTriples( config, property, conceptSchemeUri, publicationGraph, exportConfig ){
+  const { pathToConceptScheme, graphsFilter, type } = config;
 
-  const predicatePath = pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
+  let pathToConceptSchemeString = '';
+
+  if(pathToConceptScheme.length){
+    const predicatePath = pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
+    pathToConceptSchemeString = `?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.`;
+  }
 
   let selectFromDatabase = '';
 
@@ -199,11 +196,11 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
+        ?subject a ${sparqlEscapeUri(type)}.
         GRAPH ?g {
           ?subject ?predicate ?object.
         }
-        ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
-
+       ${pathToConceptSchemeString}
         FILTER ( ${graphsFilterStr} )
        }
     `;
@@ -216,10 +213,11 @@ async function getScopedSourceTriples( pathToConceptScheme, graphsFilter, proper
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
+        ?subject a ${sparqlEscapeUri(type)}.
         GRAPH ?g {
           ?subject ?predicate ?object.
         }
-        ?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.
+        ${pathToConceptSchemeString}
         FILTER(?g NOT IN (${sparqlEscapeUri(publicationGraph)}))
        }
     `;
