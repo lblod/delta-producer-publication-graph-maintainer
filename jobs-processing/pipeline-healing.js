@@ -190,14 +190,14 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   if(graphsFilter.length) {
 
     const graphsFilterStr = graphsFilter
-          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
           .join(' || ');
 
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
         ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?g {
+        GRAPH ?graph {
           ?subject ?predicate ?object.
         }
        ${pathToConceptSchemeString}
@@ -214,11 +214,11 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
         ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?g {
+        GRAPH ?graph {
           ?subject ?predicate ?object.
         }
         ${pathToConceptSchemeString}
-        FILTER(?g NOT IN (${sparqlEscapeUri(publicationGraph)}))
+        FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))
        }
     `;
   }
