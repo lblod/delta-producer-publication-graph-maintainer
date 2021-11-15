@@ -54,6 +54,8 @@ export async function runHealingTask( task, isInitialSync ){
 
       const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
       const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
+
+      console.log('Calculating diffs, this may take a while');
       const diffs = diffNTriples(sourceTriples, publicationGraphTriples);
 
       accumulatedDiffs.removals = [ ...accumulatedDiffs.removals, ...diffs.removals ];
@@ -252,13 +254,18 @@ function diffNTriples(target, source) {
   //So think about it, when copy pasting :-)
   const diff = { additions: [], removals: [] };
 
-  const sortedTarget = target.sort();
-  const sortedSource = source.sort();
-  const targetString = sortedTarget.join('\n');
-  const sourceString = sortedSource.join('\n');
+  const targetHash = target.reduce((acc, curr) => {
+    acc[curr] = curr;
+    return acc;
+  }, {});
 
-  diff.additions = sortedTarget.filter(nt => sourceString.indexOf(nt) < 0);
-  diff.removals = sortedSource.filter(nt => targetString.indexOf(nt) < 0);
+  const sourceHash = source.reduce((acc, curr) => {
+    acc[curr] = curr;
+    return acc;
+  }, {});
+
+  diff.additions = target.filter(nt => !sourceHash[nt]);
+  diff.removals = source.filter(nt => !targetHash[nt]);
 
   return diff;
 }
