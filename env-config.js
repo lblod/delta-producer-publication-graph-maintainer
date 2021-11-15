@@ -55,6 +55,7 @@ export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIA
 //Let's hide this feature, but currently mu-auth cuts off the connection if it takes too long. (1.5 min queries)
 //Difficult to reproduce, it depends on what is in the DB, but is systematic once the DB is that state.
 export const USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS == 'true' ? true : false ;
+export const SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false ;
 export const VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT  || 'http://virtuoso:8890/sparql';
 export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
 

@@ -9,6 +9,7 @@ import { STATUS_BUSY,
          REMOVAL_CONTAINER,
          REPORTING_FILES_GRAPH,
          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
+         SKIP_MU_AUTH_INITIAL_SYNC,
          VIRTUOSO_ENDPOINT,
          MU_AUTH_ENDPOINT,
          MU_CALL_SCOPE_ID_INITIAL_SYNC,
@@ -64,13 +65,19 @@ export async function runHealingTask( task, isInitialSync ){
       extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
     }
 
+    let endpoint = MU_AUTH_ENDPOINT;
+    if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+      console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
+      endpoint = VIRTUOSO_ENDPOINT;
+    }
     if(accumulatedDiffs.removals.length){
       await batchedUpdate(accumulatedDiffs.removals,
                           PUBLICATION_GRAPH,
                           'DELETE',
                           500,
-                          extraHeaders
                           HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          extraHeaders,
+                          endpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
@@ -81,8 +88,9 @@ export async function runHealingTask( task, isInitialSync ){
                           PUBLICATION_GRAPH,
                           'INSERT',
                           500,
-                          extraHeaders
                           HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          extraHeaders,
+                          endpoint
                          );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
