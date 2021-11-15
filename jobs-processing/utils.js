@@ -1,4 +1,4 @@
-import { sparqlEscapeUri } from 'mu';
+import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
          HEALING_JOB_OPERATION,

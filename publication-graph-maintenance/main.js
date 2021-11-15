@@ -1,4 +1,5 @@
-import { uuid, sparqlEscapeUri } from 'mu';
+import { uuid } from 'mu';
+import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { produceDelta } from './producer';
 import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE } from '../env-config';

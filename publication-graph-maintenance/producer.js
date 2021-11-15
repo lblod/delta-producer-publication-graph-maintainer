@@ -1,4 +1,5 @@
-import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
+import { sparqlEscapeString } from 'mu';
+import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath, loadConfiguration } from '../lib/utils';
