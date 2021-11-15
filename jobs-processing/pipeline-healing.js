@@ -73,6 +73,7 @@ export async function runHealingTask( task, isInitialSync ){
       console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
       endpoint = VIRTUOSO_ENDPOINT;
     }
+
     if(accumulatedDiffs.removals.length){
       await batchedUpdate(accumulatedDiffs.removals,
                           PUBLICATION_GRAPH,
@@ -188,7 +189,7 @@ async function getPublicationTriples(property, publicationGraph){
  * for all graphs except the ones exclusively residing in the publication graph
  */
 async function getScopedSourceTriples( config, property, conceptSchemeUri, publicationGraph, exportConfig ){
-  const { pathToConceptScheme, graphsFilter, type } = config;
+  const { additionalFilter, pathToConceptScheme, graphsFilter, type } = config;
 
   let pathToConceptSchemeString = '';
 
@@ -198,6 +199,11 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   }
 
   let selectFromDatabase = '';
+
+  // Important note: renaming variables in the next query, will very likely break
+  // additionalFilter functionality. So better leave it as is.
+  // This is abstraction leakage, it might be in need in further thinking, but
+  // it avoids for now the need for a complicated intermediate abstraction.
 
   if(graphsFilter.length) {
 
@@ -212,7 +218,11 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
         GRAPH ?graph {
           ?subject ?predicate ?object.
         }
-       ${pathToConceptSchemeString}
+
+        ${pathToConceptSchemeString}
+
+        ${additionalFilter ? additionalFilter : ''}
+
         FILTER ( ${graphsFilterStr} )
        }
     `;
@@ -230,6 +240,9 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
           ?subject ?predicate ?object.
         }
         ${pathToConceptSchemeString}
+
+        ${additionalFilter ? additionalFilter : ''}
+
         FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))
        }
     `;

@@ -445,12 +445,23 @@ function getChildConfigurations(config) {
 */
 async function isInScopeOfConfiguration(subject, config) {
 
+  let additionalFilter = '';
+
+  if(config.additionalFilter){
+    additionalFilter = config.additionalFilter;
+  }
+
   let pathToConceptSchemeString = '';
 
   if(config.pathToConceptScheme.length){
     const predicatePath = config.pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
     pathToConceptSchemeString = `?subject ${predicatePath} ${sparqlEscapeUri(EXPORT_CONFIG.conceptScheme)}.`;
   }
+
+  // Important note: renaming variables in the next query, will very likely break
+  // additionalFilter functionality. So better leave it as is.
+  // This is abstraction leakage, it might be in need in further thinking, but
+  // it avoids for now the need for a complicated intermediate abstraction.
 
   const result = await query(`
     SELECT ?predicate WHERE {
@@ -461,6 +472,8 @@ async function isInScopeOfConfiguration(subject, config) {
       GRAPH ?graph {
        ?subject ?predicate ?object .
       }
+
+      ${additionalFilter}
 
       ${buildGraphFilter(config)}
 
