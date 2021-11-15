@@ -1,4 +1,5 @@
-import { sparqlEscapeUri, sparqlEscapeString } from 'mu';
+import { sparqlEscapeString } from 'mu';
+import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { isInverse, sparqlEscapePredicate, normalizePredicate, serializeTriple, isSamePath, loadConfiguration } from '../lib/utils';
@@ -452,13 +453,13 @@ async function isInScopeOfConfiguration(subject, config) {
   }
 
   const result = await query(`
-    SELECT ?p WHERE {
-      BIND(${sparqlEscapeUri(subject)} as ?s)
+    SELECT ?predicate WHERE {
+      BIND(${sparqlEscapeUri(subject)} as ?subject)
 
       ${pathToConceptSchemeString}.
 
-      GRAPH ?g {
-       ?s ?p ?o .
+      GRAPH ?graph {
+       ?subject ?predicate ?object .
       }
 
       ${buildGraphFilter(config)}
@@ -471,13 +472,13 @@ async function isInScopeOfConfiguration(subject, config) {
 function buildGraphFilter(config){
   // Either we want the triple to resided in a spefic (set) of graphs,
   // or not (exclusively) in the publication graph.
-  let filter = `FILTER(?g NOT IN (${sparqlEscapeUri(PUBLICATION_GRAPH)}))`;
+  let filter = `FILTER(?graph NOT IN (${sparqlEscapeUri(PUBLICATION_GRAPH)}))`;
 
   if(config.graphsFilter.length){
 
     const graphsFilterStrPart = config
           .graphsFilter
-          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
           .join(' || ');
 
     filter = `FILTER ( ${graphsFilterStrPart} )`;

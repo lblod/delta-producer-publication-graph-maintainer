@@ -44,6 +44,8 @@ export const INSERTION_CONTAINER = 'http://redpencil.data.gift/id/concept/Healin
 export const REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
 export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
+export const HEALING_PATCH_GRAPH_BATCH_SIZE = parseInt(process.env.HEALING_PATCH_GRAPH_BATCH_SIZE || 100);
+
 export const MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = process.env.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
   || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
 
@@ -53,6 +55,7 @@ export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIA
 //Let's hide this feature, but currently mu-auth cuts off the connection if it takes too long. (1.5 min queries)
 //Difficult to reproduce, it depends on what is in the DB, but is systematic once the DB is that state.
 export const USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS == 'true' ? true : false ;
+export const SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false ;
 export const VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT  || 'http://virtuoso:8890/sparql';
 export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
 

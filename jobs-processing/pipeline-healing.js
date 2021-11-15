@@ -1,13 +1,16 @@
-import { uuid, sparqlEscapeUri, sparqlEscapeString } from 'mu';
+import { uuid, sparqlEscapeString } from 'mu';
+import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { STATUS_BUSY,
          STATUS_FAILED,
          STATUS_SUCCESS,
          PUBLICATION_GRAPH,
+         HEALING_PATCH_GRAPH_BATCH_SIZE,
          INSERTION_CONTAINER,
          REMOVAL_CONTAINER,
          REPORTING_FILES_GRAPH,
          USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
+         SKIP_MU_AUTH_INITIAL_SYNC,
          VIRTUOSO_ENDPOINT,
          MU_AUTH_ENDPOINT,
          MU_CALL_SCOPE_ID_INITIAL_SYNC,
@@ -51,6 +54,8 @@ export async function runHealingTask( task, isInitialSync ){
 
       const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
       const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
+
+      console.log('Calculating diffs, this may take a while');
       const diffs = diffNTriples(sourceTriples, publicationGraphTriples);
 
       accumulatedDiffs.removals = [ ...accumulatedDiffs.removals, ...diffs.removals ];
@@ -63,13 +68,19 @@ export async function runHealingTask( task, isInitialSync ){
       extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
     }
 
+    let endpoint = MU_AUTH_ENDPOINT;
+    if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+      console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
+      endpoint = VIRTUOSO_ENDPOINT;
+    }
     if(accumulatedDiffs.removals.length){
       await batchedUpdate(accumulatedDiffs.removals,
                           PUBLICATION_GRAPH,
                           'DELETE',
                           500,
-                          100,
-                          extraHeaders
+                          HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          extraHeaders,
+                          endpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
@@ -80,8 +91,9 @@ export async function runHealingTask( task, isInitialSync ){
                           PUBLICATION_GRAPH,
                           'INSERT',
                           500,
-                          100,
-                          extraHeaders
+                          HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          extraHeaders,
+                          endpoint
                          );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
@@ -190,14 +202,14 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   if(graphsFilter.length) {
 
     const graphsFilterStr = graphsFilter
-          .map(g => `regex(str(?g), ${sparqlEscapeString(g)})`)
+          .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
           .join(' || ');
 
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
         ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?g {
+        GRAPH ?graph {
           ?subject ?predicate ?object.
         }
        ${pathToConceptSchemeString}
@@ -214,11 +226,11 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
         ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?g {
+        GRAPH ?graph {
           ?subject ?predicate ?object.
         }
         ${pathToConceptSchemeString}
-        FILTER(?g NOT IN (${sparqlEscapeUri(publicationGraph)}))
+        FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))
        }
     `;
   }
@@ -242,13 +254,18 @@ function diffNTriples(target, source) {
   //So think about it, when copy pasting :-)
   const diff = { additions: [], removals: [] };
 
-  const sortedTarget = target.sort();
-  const sortedSource = source.sort();
-  const targetString = sortedTarget.join('\n');
-  const sourceString = sortedSource.join('\n');
+  const targetHash = target.reduce((acc, curr) => {
+    acc[curr] = curr;
+    return acc;
+  }, {});
 
-  diff.additions = sortedTarget.filter(nt => sourceString.indexOf(nt) < 0);
-  diff.removals = sortedSource.filter(nt => targetString.indexOf(nt) < 0);
+  const sourceHash = source.reduce((acc, curr) => {
+    acc[curr] = curr;
+    return acc;
+  }, {});
+
+  diff.additions = target.filter(nt => !sourceHash[nt]);
+  diff.removals = source.filter(nt => !targetHash[nt]);
 
   return diff;
 }
