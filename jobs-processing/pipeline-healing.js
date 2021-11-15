@@ -4,6 +4,7 @@ import { STATUS_BUSY,
          STATUS_FAILED,
          STATUS_SUCCESS,
          PUBLICATION_GRAPH,
+         HEALING_PATCH_GRAPH_BATCH_SIZE,
          INSERTION_CONTAINER,
          REMOVAL_CONTAINER,
          REPORTING_FILES_GRAPH,
@@ -68,8 +69,8 @@ export async function runHealingTask( task, isInitialSync ){
                           PUBLICATION_GRAPH,
                           'DELETE',
                           500,
-                          100,
                           extraHeaders
+                          HEALING_PATCH_GRAPH_BATCH_SIZE,
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
@@ -80,8 +81,8 @@ export async function runHealingTask( task, isInitialSync ){
                           PUBLICATION_GRAPH,
                           'INSERT',
                           500,
-                          100,
                           extraHeaders
+                          HEALING_PATCH_GRAPH_BATCH_SIZE,
                          );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
