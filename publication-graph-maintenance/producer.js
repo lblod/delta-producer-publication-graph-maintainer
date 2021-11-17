@@ -467,7 +467,7 @@ async function isInScopeOfConfiguration(subject, config) {
     SELECT ?predicate WHERE {
       BIND(${sparqlEscapeUri(subject)} as ?subject)
 
-      ${pathToConceptSchemeString}.
+      ${pathToConceptSchemeString}
 
       GRAPH ?graph {
        ?subject ?predicate ?object .
