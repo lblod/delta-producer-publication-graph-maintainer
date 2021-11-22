@@ -132,9 +132,8 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
       for (let config of exportConfigurations) {
         const isInScope = await isInScopeOfConfiguration(subject, config);
         const predicate = triple.predicate.value;
-        const isConfiguredForExport = predicate == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || config.properties.includes(predicate);
 
-        if (isInScope && isConfiguredForExport) {
+        if (isInScope && isConfiguredForExport(triple, config)) {
 
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
@@ -148,7 +147,7 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
           if (!isInScope)
             console.log(`No path to export concept scheme found for subject <${subject}>.`);
 
-          else if (!isConfiguredForExport)
+          else if (!isConfiguredForExport(triple, config))
             console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
 
         }
@@ -244,9 +243,13 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
       for (let config of exportConfigurations) {
         // No need to check the path to the export concept scheme. We want to copy the deletion in either case.
         // E.g. deletion of the end date of a mandatee must be copied, whether the mandatee is still related to the export concept scheme or not
+        // TODO: the above assumption is not valid anymore since the introduction of graphFilters.
+        // E.g. Consider both Cats and Animals in need of being exported.
+        // And in the source they both reside on their own graph: <http://graphs/Animals>, <http://graphs/Cats>.
+        // If a property <http://amount/of/legs> gets deleted, doesn't mean it needs to be deleted in the publication graph.
+        // TODO2: think of similar issues for conceptscheme and filters
         const predicate = triple.predicate.value;
-        const isConfiguredForExport = predicate == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || config.properties.includes(predicate);
-        if (isConfiguredForExport) {
+        if (isConfiguredForExport(triple, config)) {
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
           triplesToDelete.push(triple);
@@ -383,15 +386,23 @@ function getImpactedResources(changeSet, typeCache) {
  * based on the export configuration and the triples in the triplestore
 */
 async function exportResource(uri, config) {
+  const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
   delta.push({
     subject: { type: 'uri', value: uri },
-    predicate: { type: 'uri', value: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' },
+    predicate: { type: 'uri', value: rdfType },
     object: { type: 'uri', value: config.type }
   });
 
   for (let prop of config.properties) {
+    // We skip this information because we already encoded it in the previous step
+    // And we don't want to export too much (i.e. multi-types)
+    // Note: this is a extra safety barrier
+    if(prop == rdfType){
+      continue;
+    }
+
     //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
     const result = await query(`
       SELECT DISTINCT ?o WHERE {
@@ -498,4 +509,19 @@ function buildGraphFilter(config){
   }
 
   return filter;
+}
+
+function isConfiguredForExport(triple, config){
+  const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+  // To ensure what gets exported exaclty matches the configuration,
+  // we need to make sure the type matches. Else we might potentially export too much
+  if(triple.predicate == rdfType){
+    return triple.object.value == config.type;
+  }
+  else if(config.properties.includes(triple.predicate.value)){
+    return true;
+  }
+  else {
+    return false;
+  }
 }
