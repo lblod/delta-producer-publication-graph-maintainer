@@ -203,57 +203,39 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
     strictTypeFilter = `BIND(${sparqlEscapeUri(type)} as ?object)`;
   }
 
-  let selectFromDatabase = '';
+  // We don't know in what graph the triples are, but we know how they are connected to
+  // the concept scheme.
+ // What we certainly don't want, are triples only living in the publication-graph
+  let graphsFilterStr = `FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))`;
+  if(graphsFilter.length){
+    //Else use the provided graphs filter
+    graphsFilterStr = graphsFilter
+      .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
+      .join(' || ');
+    graphsFilterStr = `FILTER ( ${graphsFilterStr} )`;
+  }
 
   // Important note: renaming variables in the next query, will very likely break
   // additionalFilter functionality. So better leave it as is.
   // This is abstraction leakage, it might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
 
-  if(graphsFilter.length) {
+  const selectFromDatabase = `
+    SELECT DISTINCT ?subject ?predicate ?object WHERE {
+      BIND(${sparqlEscapeUri(property)} as ?predicate)
+      ${strictTypeFilter}
+      ?subject a ${sparqlEscapeUri(type)}.
+      GRAPH ?graph {
+        ?subject ?predicate ?object.
+      }
 
-    const graphsFilterStr = graphsFilter
-          .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
-          .join(' || ');
+      ${pathToConceptSchemeString}
 
-    selectFromDatabase = `
-      SELECT DISTINCT ?subject ?predicate ?object WHERE {
-        BIND(${sparqlEscapeUri(property)} as ?predicate)
-        ${strictTypeFilter}
-        ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?graph {
-          ?subject ?predicate ?object.
-        }
+      ${additionalFilter ? additionalFilter : ''}
 
-        ${pathToConceptSchemeString}
-
-        ${additionalFilter ? additionalFilter : ''}
-
-        FILTER ( ${graphsFilterStr} )
-       }
-    `;
-  }
-
-  else {
-    // We don't know in what graph the triples are, but we know how they are connected to
-    // the concept scheme.
-    // What we certainly don't want, are triples only living in the publication-graph
-    selectFromDatabase = `
-      SELECT DISTINCT ?subject ?predicate ?object WHERE {
-        BIND(${sparqlEscapeUri(property)} as ?predicate)
-        ${strictTypeFilter}
-        ?subject a ${sparqlEscapeUri(type)}.
-        GRAPH ?graph {
-          ?subject ?predicate ?object.
-        }
-        ${pathToConceptSchemeString}
-
-        ${additionalFilter ? additionalFilter : ''}
-
-        FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))
-       }
-    `;
-  }
+      ${graphsFilterStr}
+     }
+  `;
 
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
   const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
