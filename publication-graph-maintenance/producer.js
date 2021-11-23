@@ -247,6 +247,8 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
         // E.g. Consider both Cats and Animals in need of being exported.
         // And in the source they both reside on their own graph: <http://graphs/Animals>, <http://graphs/Cats>.
         // If a property <http://amount/of/legs> gets deleted, doesn't mean it needs to be deleted in the publication graph.
+        // Furthermore, even in the same graph, do we expect these to be deleted too? It becomes more flagrant when the property
+        // is e.g. mu:uuid
         // TODO2: think of similar issues for conceptscheme and filters
         const predicate = triple.predicate.value;
         if (isConfiguredForExport(triple, config)) {
