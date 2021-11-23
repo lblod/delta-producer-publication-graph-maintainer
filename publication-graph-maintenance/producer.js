@@ -399,7 +399,7 @@ async function exportResource(uri, config) {
     // We skip this information because we already encoded it in the previous step
     // And we don't want to export too much (i.e. multi-types)
     // Note: this is a extra safety barrier
-    if(prop == rdfType){
+    if(prop == rdfType && config.strictTypeExport){
       continue;
     }
 
@@ -512,13 +512,14 @@ function buildGraphFilter(config){
 }
 
 function isConfiguredForExport(triple, config){
+  const predicate = triple.predicate.value;
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   // To ensure what gets exported exaclty matches the configuration,
   // we need to make sure the type matches. Else we might potentially export too much
-  if(triple.predicate == rdfType){
+  if(predicate == rdfType && config.strictTypeExport){
     return triple.object.value == config.type;
   }
-  else if(config.properties.includes(triple.predicate.value)){
+  else if(predicate == rdfType || config.properties.includes(predicate)){
     return true;
   }
   else {
