@@ -189,13 +189,18 @@ async function getPublicationTriples(property, publicationGraph){
  * for all graphs except the ones exclusively residing in the publication graph
  */
 async function getScopedSourceTriples( config, property, conceptSchemeUri, publicationGraph, exportConfig ){
-  const { additionalFilter, pathToConceptScheme, graphsFilter, type } = config;
+  const { additionalFilter, pathToConceptScheme, graphsFilter, type, strictTypeExport } = config;
 
   let pathToConceptSchemeString = '';
 
   if(pathToConceptScheme.length){
     const predicatePath = pathToConceptScheme.map(p => sparqlEscapePredicate(p)).join('/');
     pathToConceptSchemeString = `?subject ${predicatePath} ${sparqlEscapeUri(conceptSchemeUri)}.`;
+  }
+
+  let strictTypeFilter = '';
+  if(property == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' && strictTypeExport){
+    strictTypeFilter = `BIND(${sparqlEscapeUri(type)} as ?object)`;
   }
 
   let selectFromDatabase = '';
@@ -214,6 +219,7 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
+        ${strictTypeFilter}
         ?subject a ${sparqlEscapeUri(type)}.
         GRAPH ?graph {
           ?subject ?predicate ?object.
@@ -235,6 +241,7 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
     selectFromDatabase = `
       SELECT DISTINCT ?subject ?predicate ?object WHERE {
         BIND(${sparqlEscapeUri(property)} as ?predicate)
+        ${strictTypeFilter}
         ?subject a ${sparqlEscapeUri(type)}.
         GRAPH ?graph {
           ?subject ?predicate ?object.
