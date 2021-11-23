@@ -395,6 +395,12 @@ async function exportResource(uri, config) {
     object: { type: 'uri', value: config.type }
   });
 
+  let additionalFilter = '';
+
+  if(config.additionalFilter){
+    additionalFilter = config.additionalFilter;
+  }
+
   for (let prop of config.properties) {
     // We skip this information because we already encoded it in the previous step
     // And we don't want to export too much (i.e. multi-types)
@@ -409,6 +415,9 @@ async function exportResource(uri, config) {
         GRAPH ?g {
           ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
         }
+
+        ${additionalFilter ? additionalFilter : ''}
+
         ${buildGraphFilter(config)}
       }`);
 
