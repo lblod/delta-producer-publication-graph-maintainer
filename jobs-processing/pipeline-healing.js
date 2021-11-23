@@ -189,7 +189,7 @@ async function getPublicationTriples(property, publicationGraph){
  * for all graphs except the ones exclusively residing in the publication graph
  */
 async function getScopedSourceTriples( config, property, conceptSchemeUri, publicationGraph, exportConfig ){
-  const { additionalFilter, pathToConceptScheme, graphsFilter, type } = config;
+  const { additionalFilter, pathToConceptScheme, graphsFilter, type, strictTypeExport } = config;
 
   let pathToConceptSchemeString = '';
 
@@ -199,7 +199,7 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   }
 
   let strictTypeFilter = '';
-  if(property == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'){
+  if(property == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' && strictTypeExport){
     strictTypeFilter = `BIND(${sparqlEscapeUri(type)} as ?object)`;
   }
 
