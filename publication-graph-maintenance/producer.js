@@ -144,16 +144,23 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
       for (let config of exportConfigurations) {
         const isInScope = await isInScopeOfConfiguration(uri, config);
         if (isInScope) {
+          if(config.additionalFilter) {
+            if (LOG_DELTA_REWRITE)
+              console.log(`Additional Filters found, enriching insert changeset with export of resource <${uri}>.`);
+            const resourceExport = await exportResource(uri, config);
+            triplesToInsert.push(...resourceExport);
+          } else if(isConfiguredForExport(triple, config)) {
+            if (LOG_DELTA_REWRITE)
+              console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
+            triplesToInsert.push(triple);
+          } else {
+            if (LOG_DELTA_REWRITE)
+              console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
+          }
+        } else {
           if (LOG_DELTA_REWRITE)
-            console.log(`Enriching insert changeset with export of resource <${uri}>.`);
-          const resourceExport = await exportResource(uri, config);
-          triplesToInsert.push(...resourceExport);
-        } else if (LOG_DELTA_REWRITE) {
-          if (!isInScope)
             console.log(`No path to export concept scheme found for subject <${uri}>.`);
         }
-        if (LOG_DELTA_REWRITE)
-          console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
       }
     } else if (LOG_DELTA_REWRITE) {
       console.log(
