@@ -144,12 +144,13 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
       for (let config of exportConfigurations) {
         const isInScope = await isInScopeOfConfiguration(uri, config);
         if (isInScope) {
-          if(config.additionalFilter) {
+          if (config.additionalFilter) {
+            processedResources.push(uri);
             if (LOG_DELTA_REWRITE)
               console.log(`Additional Filters found, enriching insert changeset with export of resource <${uri}>.`);
             const resourceExport = await exportResource(uri, config);
             triplesToInsert.push(...resourceExport);
-          } else if(isConfiguredForExport(triple, config)) {
+          } else if (isConfiguredForExport(triple, config)) {
             if (LOG_DELTA_REWRITE)
               console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
             triplesToInsert.push(triple);
@@ -166,7 +167,6 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
       console.log(
           `Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
-    processedResources.push(uri);
   }
 
   const enrichments = await enrichInsertedChangeset(triplesToInsert, typeCache, processedResources);
@@ -237,13 +237,14 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
  */
 async function rewriteDeletedChangeset(changeSet, typeCache) {
   const triplesToDelete = [];
+  const processedResources = []; // tmp cache of recursively added resources
 
   // For each triple of the changeset, check if it is relevant for the export.
   // Ie. the subject doesn't have any path to the export concept-scheme and the predicate is configured to be exported
   // There is an implicit assumption that a resource only has 1 kind-of path to the export CS (but there may be multiple instances of this path)
   for (let triple of changeSet) {
-    const subject = triple.subject.value;
-    const exportConfigurations = typeCache.filter(e => e.uri == subject).map(e => e.config);
+    const uri = triple.subject.value;
+    const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
         // No need to check the path to the export concept scheme. We want to copy the deletion in either case.
@@ -256,7 +257,15 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
         // is e.g. mu:uuid
         // TODO2: think of similar issues for conceptscheme and filters
         const predicate = triple.predicate.value;
-        if (isConfiguredForExport(triple, config)) {
+        const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
+        if (isOutOfScope && config.additionalFilter) {
+          processedResources.push(uri);
+          if (LOG_DELTA_REWRITE)
+            console.log(`Additional Filters found, enriching delete changeset with export of resource <${uri}>.`);
+          // If the resource is out-of-scope/to-be-deleted, we need to get the full resource from the publication graph.
+          const resourceExport = await exportResource(uri, config, publicationGraphFilter);
+          triplesToDelete.push(...resourceExport);
+        } else if (isConfiguredForExport(triple, config)) {
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
           triplesToDelete.push(triple);
@@ -273,7 +282,6 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
     }
   }
 
-  const processedResources = []; // tmp cache of recursively deleted resources
   const enrichments = await enrichDeletedChangeset(changeSet, typeCache, processedResources);
   if (LOG_DELTA_REWRITE) {
     console.log(`Checked ${processedResources.length} additional resources to delete.`);
@@ -399,7 +407,7 @@ function getImpactedResources(changeSet, typeCache) {
  * Construct the triples to be exported (inserted/deleted) for a given subject URI
  * based on the export configuration and the triples in the triplestore
  */
-async function exportResource(uri, config) {
+async function exportResource(uri, config, graphFilterBuilder = () => configGraphFilter(config)) {
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
@@ -432,8 +440,8 @@ async function exportResource(uri, config) {
 
         ${additionalFilter ? additionalFilter : ''}
 
-        ${buildGraphFilter(config)}
-      }`
+        ${graphFilterBuilder()}
+      }`;
     const result = await query(q);
 
     for (let b of result.results.bindings) {
@@ -477,7 +485,7 @@ function getChildConfigurations(config) {
  * Note 2:
  *    the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
-async function isInScopeOfConfiguration(subject, config) {
+async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = () => configGraphFilter(config)) {
 
   let additionalFilter = '';
 
@@ -509,14 +517,14 @@ async function isInScopeOfConfiguration(subject, config) {
 
       ${additionalFilter}
 
-      ${buildGraphFilter(config)}
+      ${graphFilterBuilder()}
 
     } LIMIT 1
   `);
   return result.results.bindings.length;
 }
 
-function buildGraphFilter(config) {
+function configGraphFilter(config) {
   // Either we want the triple to resided in a specific (set) of graphs,
   // or not (exclusively) in the publication graph.
   let filter = `FILTER(?graph NOT IN (${sparqlEscapeUri(PUBLICATION_GRAPH)}))`;
@@ -532,6 +540,10 @@ function buildGraphFilter(config) {
   }
 
   return filter;
+}
+
+function publicationGraphFilter() {
+  return `FILTER ( regex(str(?graph), ${sparqlEscapeString(PUBLICATION_GRAPH)}) )`;
 }
 
 function isConfiguredForExport(triple, config) {
