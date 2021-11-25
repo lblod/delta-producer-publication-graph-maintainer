@@ -142,7 +142,7 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
     const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        const isInScope = await isInScopeOfConfiguration(uri, config);
+        const isInScope = await isResourceInScopeOfConfiguration(uri, config);
         if (isInScope) {
           // We don't check if the resource has already been processed,
           // different configuration could contain different predicates
@@ -152,7 +152,7 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
               console.log(`Additional Filters found, enriching insert changeset with export of resource <${uri}>.`);
             const resourceExport = await exportResource(uri, config);
             triplesToInsert.push(...resourceExport);
-          } else if (isConfiguredForExport(triple, config)) {
+          } else if (isTripleInScopeOfConfiguration(triple, config)) {
             if (LOG_DELTA_REWRITE)
               console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
             triplesToInsert.push(triple);
@@ -199,7 +199,7 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
   for (let {uri, config} of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isInScope = await isInScopeOfConfiguration(uri, config);
+      const isInScope = await isResourceInScopeOfConfiguration(uri, config);
       if (isInScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching insert changeset with export of resource <${uri}>.`);
@@ -250,7 +250,7 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
         const predicate = triple.predicate.value;
-        const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
+        const isOutOfScope = !(await isResourceInScopeOfConfiguration(uri, config));
         // We don't check if the resource has already been processed,
         // different configuration could contain different predicates
         if (isOutOfScope) {
@@ -260,7 +260,7 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
           // If the resource is out-of-scope/to-be-deleted, we need to get the full resource from the publication graph.
           const resourceExport = await exportResource(uri, config, publicationGraphFilter);
           triplesToDelete.push(...resourceExport);
-        } else if (isConfiguredForExport(triple, config)) {
+        } else if (isTripleInScopeOfConfiguration(triple, config)) {
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
           triplesToDelete.push(triple);
@@ -304,7 +304,7 @@ async function enrichDeletedChangeset(changeSet, typeCache, processedResources) 
   for (let {uri, config} of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
+      const isOutOfScope = !(await isResourceInScopeOfConfiguration(uri, config));
       if (isOutOfScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching delete changeset with export of resource <${uri}>.`);
@@ -479,7 +479,7 @@ function getChildConfigurations(config) {
  * Note 2:
  *    by default the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
-async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = () => configGraphFilter(config)) {
+async function isResourceInScopeOfConfiguration(subject, config, graphFilterBuilder = () => configGraphFilter(config)) {
 
   let additionalFilter = '';
 
@@ -513,7 +513,7 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
       ${graphFilterBuilder()}
 
     } LIMIT 1
-  `
+  `;
 
   const result = await query(q);
   return result.results.bindings.length;
@@ -541,16 +541,27 @@ function publicationGraphFilter() {
   return `FILTER ( regex(str(?graph), ${sparqlEscapeString(PUBLICATION_GRAPH)}) )`;
 }
 
-function isConfiguredForExport(triple, config) {
-  const predicate = triple.predicate.value;
-  const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+function isTripleInScopeOfConfiguration(triple, config) {
+
+  const isRDFType = () => triple.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+
+  const isGraphOfInterest = () => {
+    if (!config.graphsFilter || config.graphsFilter.length === 0)
+      return true;
+    for (let i = 0; i < config.graphsFilter.length; i++) {
+      if (triple.graph.value.match(config.graphsFilter[i]))
+        return true;
+    }
+    return false;
+  };
+
+  const isPredicateConfiguredForExport = () => config.properties.includes(triple.predicate.value);
+
   // To ensure what gets exported exaclty matches the configuration,
   // we need to make sure the type matches. Else we might potentially export too much
-  if (predicate == rdfType && config.strictTypeExport) {
-    return triple.object.value == config.type;
-  } else if (predicate == rdfType || config.properties.includes(predicate)) {
-    return true;
+  if (isRDFType() && config.strictTypeExport) {
+    return triple.object.value === config.type;
   } else {
-    return false;
+    return isRDFType() || (isPredicateConfiguredForExport() && isGraphOfInterest());
   }
 }
