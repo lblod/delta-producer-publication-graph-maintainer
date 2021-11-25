@@ -227,11 +227,10 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
       ?subject a ${sparqlEscapeUri(type)}.
       GRAPH ?graph {
         ?subject ?predicate ?object.
+        ${additionalFilter ? additionalFilter : ''}
       }
 
       ${pathToConceptSchemeString}
-
-      ${additionalFilter ? additionalFilter : ''}
 
       ${graphsFilterStr}
      }

@@ -144,6 +144,8 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
       for (let config of exportConfigurations) {
         const isInScope = await isInScopeOfConfiguration(uri, config);
         if (isInScope) {
+          // We don't check if the resource has already been processed,
+          // different configuration could contain different predicates
           if (config.additionalFilter) {
             processedResources.push(uri);
             if (LOG_DELTA_REWRITE)
@@ -247,18 +249,11 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
     const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        // No need to check the path to the export concept scheme. We want to copy the deletion in either case.
-        // E.g. deletion of the end date of a mandatee must be copied, whether the mandatee is still related to the export concept scheme or not
-        // TODO: the above assumption is not valid anymore since the introduction of graphFilters.
-        // E.g. Consider both Cats and Animals in need of being exported.
-        // And in the source they both reside on their own graph: <http://graphs/Animals>, <http://graphs/Cats>.
-        // If a property <http://amount/of/legs> gets deleted, doesn't mean it needs to be deleted in the publication graph.
-        // Furthermore, even in the same graph, do we expect these to be deleted too? It becomes more flagrant when the property
-        // is e.g. mu:uuid
-        // TODO2: think of similar issues for conceptscheme and filters
         const predicate = triple.predicate.value;
         const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
-        if (isOutOfScope && config.additionalFilter) {
+        // We don't check if the resource has already been processed,
+        // different configuration could contain different predicates
+        if (isOutOfScope) {
           processedResources.push(uri);
           if (LOG_DELTA_REWRITE)
             console.log(`Additional Filters found, enriching delete changeset with export of resource <${uri}>.`);
@@ -269,7 +264,6 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
           if (LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
           triplesToDelete.push(triple);
-          break; // no need to check the remaining export configurations since triple is already copied to the resulting changeset
         } else if (LOG_DELTA_REWRITE) {
           console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
         }
@@ -483,7 +477,7 @@ function getChildConfigurations(config) {
  *   This function expects this check on type has been performed previously..
  *   TODO: refactor this tacit assumption. But there is a complexity with deletion, which need furhter thinking.
  * Note 2:
- *    the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+ *    by default the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
 async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = () => configGraphFilter(config)) {
 
@@ -505,7 +499,7 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
   // This is abstraction leakage, it might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
 
-  const result = await query(`
+  const q = `
     SELECT ?predicate WHERE {
       BIND(${sparqlEscapeUri(subject)} as ?subject)
 
@@ -513,14 +507,15 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
 
       GRAPH ?graph {
        ?subject ?predicate ?object .
+       ${additionalFilter}
       }
-
-      ${additionalFilter}
 
       ${graphFilterBuilder()}
 
     } LIMIT 1
-  `);
+  `
+
+  const result = await query(q);
   return result.results.bindings.length;
 }
 
