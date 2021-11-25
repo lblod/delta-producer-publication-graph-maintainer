@@ -543,7 +543,7 @@ function publicationGraphFilter() {
 
 function isTripleInScopeOfConfiguration(triple, config) {
 
-  const isRDFType = () => triple.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+  const isPredicateRDFType = () => triple.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
   const isGraphOfInterest = () => {
     if (!config.graphsFilter || config.graphsFilter.length === 0)
@@ -559,9 +559,9 @@ function isTripleInScopeOfConfiguration(triple, config) {
 
   // To ensure what gets exported exaclty matches the configuration,
   // we need to make sure the type matches. Else we might potentially export too much
-  if (isRDFType() && config.strictTypeExport) {
+  if (isPredicateRDFType() && config.strictTypeExport) {
     return triple.object.value === config.type;
   } else {
-    return isRDFType() || (isPredicateConfiguredForExport() && isGraphOfInterest());
+    return isPredicateRDFType() || (isPredicateConfiguredForExport() && isGraphOfInterest());
   }
 }
