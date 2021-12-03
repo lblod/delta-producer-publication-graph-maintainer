@@ -155,7 +155,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `properties`: list of predicates (URIs) to export for the resource type
 * `graphsFilter`: optional list of graphs where the expected triples come from.
 * `additionalFilter`: (experimental) Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on. (For limitations, cf. infra.)
-* `strictTypeExport`: If a resource has multiple types and it should not be exported, set this to `true`
+* `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
 
 The `export` array may contain multiple entries for an `rdf:type`.
 A resource may have multiple types and therefore map to multiple export configugrations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
