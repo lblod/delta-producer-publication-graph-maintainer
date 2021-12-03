@@ -154,7 +154,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `pathToConceptScheme`: list of path segments (URIs) from the resource to the export concept scheme. If the path exists, the resource is in scope of the export. Otherwise the resource is out of scope.
 * `properties`: list of predicates (URIs) to export for the resource type
 * `graphsFilter`: optional list of graphs where the expected triples come from.
-* `additionalFilter`: Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on.
+* `additionalFilter`: (experimental) Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on. (For limitations, cf. infra.)
 * `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
 
 The `export` array may contain multiple entries for an `rdf:type`.
@@ -198,7 +198,18 @@ The path to follow from the resource URI to the concept scheme is specified in t
 This approach may lead to duplicate inserts of data (eg. relating a mandate to a bestuursorgaan will produce triples to insert every mandatee, person, person's birthdate, etc. related to the mandate, while some of this data may have been synced before), but it will never expose irrelevant data or sync too little data.
 
 ## Known limitations
-* The service keeps an in-memory publication of delta's to write to a file. If the service is killed before the delta's have been written to a file, the delta's are lost. Hence, shortening the `DELTA_INTERVAL`, decreases the chance to loose data on restart.
+### additionalFilter
+Additional filter should be used cautiously. It is very likely the configuration interface will change in the future.
+#### simple filters
+In live syncing mode, it will work for simple filters, not for deeply nested one. So, e.g.:
+  - `?sForExport has:Status <http://someStatus/relevant/for/export>` will work, but
+  - `?sForExport validatedBy <http://some/operator>. <http://some/operator> hasRole <http://can/validate/for/export>` won't work.
+
+The healing compensates for this discrepancy, but be aware that as long as the healing hasn't run, your publication-graph (and thus your clients) might be in a weird state.
+The reason complicated filters don't work: Suppose `?sForExport validatedBy <http://some/operator>` has been published, and in a second step, the `<http://some/operator>` gets a different role. This would imply the resource `?sForExport` should be retracted. In live syncing mode, there is no logic present to intercept such a trigger.
+#### filters only in same graph
+The filter will only work in the same graph as where the `?sToExport` resides.
+Reason for this: current implementation makes it very difficult to exlude the publication graph when filtering (by default). Hence the limitation.
 
 ## Roadmap
 * Add support for a prefix map in the export configuration
