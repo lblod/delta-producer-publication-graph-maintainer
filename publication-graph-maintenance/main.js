@@ -116,71 +116,62 @@ async function foldChangeSet( delta ){
   const deletes = chain(delta).map(c => c.deletes).flatten().value();
   const inserts = chain(delta).map(c => c.inserts).flatten().value();
 
-  //Folding makes only sense when both deletes and inserts are there, else it is already folded
-  if(!(deletes.length && inserts.length)){
-    return delta;
-  }
+  const tempDeleteGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/deletes/${uuid()}`;
+  const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
+  try {
 
-  else {
-    const tempDeleteGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/deletes/${uuid()}`;
-    const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
-    try {
+    await batchedUpdate(deletes.map(t => serializeTriple(t)),
+                        tempDeleteGraph,
+                        'INSERT',
+                        1000,
+                        100,
+                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                       );
+    await batchedUpdate(inserts.map(t => serializeTriple(t)),
+                        tempInsertGraph,
+                        'INSERT',
+                        1000,
+                        100,
+                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                       );
 
-      await batchedUpdate(deletes.map(t => serializeTriple(t)),
-                          tempDeleteGraph,
-                          'INSERT',
-                          1000,
-                          100,
-                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
-                         );
-      await batchedUpdate(inserts.map(t => serializeTriple(t)),
-                          tempInsertGraph,
-                          'INSERT',
-                          1000,
-                          100,
-                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
-                         );
-
-      const queryForFolding = ( sourceGraph, targetGraph ) => {
-        return `
-        SELECT DISTINCT ?subject ?predicate ?object WHERE {
-            GRAPH ${sparqlEscapeUri(sourceGraph)}{
-              ?subject ?predicate ?object.
-            }
-            FILTER NOT EXISTS {
-            GRAPH ${sparqlEscapeUri(targetGraph)}{
-              ?subject ?predicate ?object.
-            }
-           }
+    const queryForFolding = ( sourceGraph, targetGraph ) => {
+      return `
+      SELECT DISTINCT ?subject ?predicate ?object WHERE {
+          GRAPH ${sparqlEscapeUri(sourceGraph)}{
+            ?subject ?predicate ?object.
+          }
+          FILTER NOT EXISTS {
+          GRAPH ${sparqlEscapeUri(targetGraph)}{
+            ?subject ?predicate ?object.
+          }
          }
-        `;
-      };
+       }
+      `;
+    };
 
-      const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000);
-      const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000);
-      return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
-    }
-    finally {
-
-      const cleanUpQuery = (graph) => {
-        return `
-           DELETE {
-               GRAPH ${sparqlEscapeUri(graph)} {
-                 ?s ?p ?o
-               }
-           }
-           WHERE {
-               GRAPH ${sparqlEscapeUri(graph)} {
-                 ?s ?p ?o
-               }
-           }
-        `;
-      };
-
-      await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
-      await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
-    }
-
+    const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000);
+    const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000);
+    return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
   }
+  finally {
 
+    const cleanUpQuery = (graph) => {
+      return `
+         DELETE {
+             GRAPH ${sparqlEscapeUri(graph)} {
+               ?s ?p ?o
+             }
+         }
+         WHERE {
+             GRAPH ${sparqlEscapeUri(graph)} {
+               ?s ?p ?o
+             }
+         }
+      `;
+    };
+
+    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+  }
 }
