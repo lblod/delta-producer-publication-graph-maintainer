@@ -148,7 +148,8 @@ async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
                                                              PUBLICATION_GRAPH,
                                                              EXPORT_CONFIG);
 
-    sourceTriples = [ ...sourceTriples, ...scopedSourceTriples ];
+    const diffs = diffNTriples(scopedSourceTriples, sourceTriples);
+    sourceTriples = [ ...sourceTriples, ...diffs.additions ];
   }
   sourceTriples = uniq(sourceTriples);
 
