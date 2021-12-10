@@ -513,7 +513,7 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
       ${graphFilterBuilder()}
 
     } LIMIT 1
-  `
+  `;
 
   const result = await query(q);
   return result.results.bindings.length;
