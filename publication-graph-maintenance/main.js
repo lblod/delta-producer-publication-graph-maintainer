@@ -1,10 +1,11 @@
-import { uuid } from 'mu';
-import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
-import { produceDelta } from './producer';
-import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, UPDATE_PUBLICATION_GRAPH_SLEEP } from '../env-config';
-import { serializeTriple, storeError, batchedUpdate, batchedQuery } from '../lib/utils';
 import { chain } from 'lodash';
+import { uuid } from 'mu';
+import { MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE,
+         PUBLICATION_GRAPH, UPDATE_PUBLICATION_GRAPH_SLEEP, SKIP_MU_AUTH_DELTA_FOLDING,
+         VIRTUOSO_ENDPOINT, MU_AUTH_ENDPOINT } from '../env-config';
+import { batchedQuery, batchedUpdate, serializeTriple, sparqlEscapeUri, storeError } from '../lib/utils';
+import { produceDelta } from './producer';
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
@@ -63,14 +64,15 @@ async function filterActualChangesToPublicationGraph(delta){
   // Comparing the atomic delete from delta directly to the target graph, to conclude it is an effective change yields
   // wrong results, because the insert:s1 won't be considered an effective insert.
   // I.e. we end up with delta: [ deletes: s1 ] to execute against the publication graph.
-  const foldedDelta = await foldChangeSet(delta);
+  const dbEndpoint = SKIP_MU_AUTH_DELTA_FOLDING ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  const foldedDelta = await foldChangeSet(delta, { dbEndpoint });
   const foldedDeletes = chain(foldedDelta).map(c => c.deletes).flatten().value();
   const foldedInserts = chain(foldedDelta).map(c => c.inserts).flatten().value();
   const actualDeletes = [];
 
   //From this folded information, we now check wether the publication graph needs an update
   for(const triple of foldedDeletes){
-    if((await tripleExists(triple, PUBLICATION_GRAPH)) ){
+    if((await tripleExists(triple, PUBLICATION_GRAPH, { dbEndpoint })) ){
       actualDeletes.push(triple);
       await new Promise(r => setTimeout(r, UPDATE_PUBLICATION_GRAPH_SLEEP)); //performance consideration
     }
@@ -79,7 +81,7 @@ async function filterActualChangesToPublicationGraph(delta){
   const actualInserts = [];
 
   for(const triple of foldedInserts){
-    if( !(await tripleExists(triple, PUBLICATION_GRAPH)) ){
+    if( !(await tripleExists(triple, PUBLICATION_GRAPH, { dbEndpoint })) ){
       actualInserts.push(triple);
       await new Promise(r => setTimeout(r, UPDATE_PUBLICATION_GRAPH_SLEEP));
     }
@@ -94,7 +96,7 @@ async function filterActualChangesToPublicationGraph(delta){
 
 }
 
-async function tripleExists( tripleObject, graph ){
+async function tripleExists( tripleObject, graph, config ){
   const tripleStr = serializeTriple(tripleObject);
   const existsQuery = `
     ASK {
@@ -104,11 +106,11 @@ async function tripleExists( tripleObject, graph ){
     }
   `;
 
-  const result = await query(existsQuery);
+  const result = await query(existsQuery, {}, config.dbEndpoint);
   return result.boolean;
 }
 
-async function foldChangeSet( delta ){
+async function foldChangeSet( delta, config ){
   //Note: we don't use utils/diffNTriples because the lexical notation from deltas is not consistent
   // e.g. 2021-05-04T00:00:00Z vs 2021-05-04T00:00:000Z
   // Therefore, we use the database, that works in logical equivalents.
@@ -125,14 +127,16 @@ async function foldChangeSet( delta ){
                         'INSERT',
                         UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
-                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        config.dbEndpoint
                        );
     await batchedUpdate(inserts.map(t => serializeTriple(t)),
                         tempInsertGraph,
                         'INSERT',
                         UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
-                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                        { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        config.dbEndpoint
                        );
 
     const queryForFolding = ( sourceGraph, targetGraph ) => {
@@ -150,8 +154,8 @@ async function foldChangeSet( delta ){
       `;
     };
 
-    const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000);
-    const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000);
+    const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
+    const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
     return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
   }
   finally {
@@ -171,7 +175,7 @@ async function foldChangeSet( delta ){
       `;
     };
 
-    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
-    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }, config.dbEnpoint);
+    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }, config.dbEnpoint);
   }
 }
