@@ -177,6 +177,7 @@ The following enviroment variables can be optionally configured:
 * `MU_CALL_SCOPE_ID_INITIAL_SYNC (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
 * `HEALING_PATCH_GRAPH_BATCH_SIZE: Size of insert/delete batches. Defaults to 100 triples`
 * `SKIP_MU_AUTH_INITIAL_SYNC: Initial sync is expensive. Mu-auth can be skipped here. But be aware about what this implies!`
+* `UPDATE_PUBLICATION_GRAPH_SLEEP (default: 1000): Sleep between batch updates in the update of the publication graph`
 
 ### API
 #### POST /delta

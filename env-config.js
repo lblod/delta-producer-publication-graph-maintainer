@@ -45,6 +45,7 @@ export const REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
 export const QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
 
 export const HEALING_PATCH_GRAPH_BATCH_SIZE = parseInt(process.env.HEALING_PATCH_GRAPH_BATCH_SIZE || 100);
+export const UPDATE_PUBLICATION_GRAPH_SLEEP = parseInt(process.env.UPDATE_PUBLICATION_GRAPH_SLEEP || 1000);
 
 export const MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = process.env.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
   || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';

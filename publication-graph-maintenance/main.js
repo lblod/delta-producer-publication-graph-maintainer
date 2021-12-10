@@ -2,7 +2,7 @@ import { uuid } from 'mu';
 import { sparqlEscapeUri } from '../lib/utils';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { produceDelta } from './producer';
-import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE } from '../env-config';
+import { PUBLICATION_GRAPH, MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, UPDATE_PUBLICATION_GRAPH_SLEEP } from '../env-config';
 import { serializeTriple, storeError, batchedUpdate, batchedQuery } from '../lib/utils';
 import { chain } from 'lodash';
 
@@ -30,7 +30,7 @@ export async function updatePublicationGraph( deltaPayload ){
       await batchedUpdate(deletes,
                           PUBLICATION_GRAPH,
                           'DELETE',
-                          1000,
+                          UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
                           { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
                          );
@@ -40,7 +40,7 @@ export async function updatePublicationGraph( deltaPayload ){
       await batchedUpdate(inserts,
                           PUBLICATION_GRAPH,
                           'INSERT',
-                          1000,
+                          UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
                           { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
                          );
@@ -72,7 +72,7 @@ async function filterActualChangesToPublicationGraph(delta){
   for(const triple of foldedDeletes){
     if((await tripleExists(triple, PUBLICATION_GRAPH)) ){
       actualDeletes.push(triple);
-      await new Promise(r => setTimeout(r, 1000)); //performance consideration
+      await new Promise(r => setTimeout(r, UPDATE_PUBLICATION_GRAPH_SLEEP)); //performance consideration
     }
   }
 
@@ -81,7 +81,7 @@ async function filterActualChangesToPublicationGraph(delta){
   for(const triple of foldedInserts){
     if( !(await tripleExists(triple, PUBLICATION_GRAPH)) ){
       actualInserts.push(triple);
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, UPDATE_PUBLICATION_GRAPH_SLEEP));
     }
   }
 
@@ -123,14 +123,14 @@ async function foldChangeSet( delta ){
     await batchedUpdate(deletes.map(t => serializeTriple(t)),
                         tempDeleteGraph,
                         'INSERT',
-                        1000,
+                        UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
                         { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
                        );
     await batchedUpdate(inserts.map(t => serializeTriple(t)),
                         tempInsertGraph,
                         'INSERT',
-                        1000,
+                        UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
                         { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
                        );
