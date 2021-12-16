@@ -1,5 +1,4 @@
-import { uuid, sparqlEscapeString } from 'mu';
-import { sparqlEscapeUri } from '../lib/utils';
+import { uuid, sparqlEscapeString, sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { STATUS_BUSY,
          STATUS_FAILED,
