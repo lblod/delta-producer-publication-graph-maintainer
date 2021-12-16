@@ -4,8 +4,9 @@ import { uuid } from 'mu';
 import { MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE,
          PUBLICATION_GRAPH, UPDATE_PUBLICATION_GRAPH_SLEEP, SKIP_MU_AUTH_DELTA_FOLDING,
          VIRTUOSO_ENDPOINT, MU_AUTH_ENDPOINT } from '../env-config';
-import { batchedQuery, batchedUpdate, serializeTriple, sparqlEscapeUri, storeError } from '../lib/utils';
+import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../lib/utils';
 import { produceDelta } from './producer';
+import { sparqlEscapeUri } from 'mu';
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
