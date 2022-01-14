@@ -1,7 +1,5 @@
 export const LOG_INCOMING_DELTA = process.env.LOG_INCOMING_DELTA || false;
-export const DELTA_INTERVAL = process.env.DELTA_INTERVAL_MS || 1000;
 export const LOG_DELTA_REWRITE = process.env.LOG_DELTA_REWRITE || false;
-export const RELATIVE_FILE_PATH = process.env.RELATIVE_FILE_PATH || 'deltas';
 export const PUBLISHER_URI = process.env.PUBLISHER_URI || 'http://data.lblod.info/services/loket-producer';
 
 export const PREFIXES = `
@@ -54,15 +52,6 @@ export const MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = process.env.MU_CAL
 export const MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC
   || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
-//Let's hide this feature, but currently mu-auth cuts off the connection if it takes too long. (1.5 min queries)
-//Difficult to reproduce, it depends on what is in the DB, but is systematic once the DB is that state.
-export const USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS == 'true' ? true : false ;
-export const SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false ;
-export const VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT  || 'http://virtuoso:8890/sparql';
-export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
-export const PUBLICATION_VIRTUOSO_ENDPOINT = process.PUBLICATION_VIRTUOSO_ENDPOINT || VIRTUOSO_ENDPOINT;
-export const PUBLICATION_MU_AUTH_ENDPOINT = process.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
-
 //mainly for debugging purposes
 export const WAIT_FOR_INITIAL_SYNC = process.env.WAIT_FOR_INITIAL_SYNC == 'false' ? false : true ;
 
@@ -77,3 +66,33 @@ export const INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION = process.env.INITIAL_
 if(!process.env.HEALING_JOB_OPERATION)
   throw `Expected 'HEALING_JOB_OPERATION' should be provided.`;
 export const HEALING_JOB_OPERATION = process.env.HEALING_JOB_OPERATION;
+
+/*
+ * START EXPERIMENTAL FEATURES
+ */
+
+//SKIP MU_AUTH
+export const USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS == 'true' ? true : false ;
+export const SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false ;
+export const VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT  || 'http://virtuoso:8890/sparql';
+export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
+
+//DIFFERENT ENDPOINT FOR PUBLICATION GRAPH
+export const PUBLICATION_VIRTUOSO_ENDPOINT = process.PUBLICATION_VIRTUOSO_ENDPOINT || VIRTUOSO_ENDPOINT;
+export const PUBLICATION_MU_AUTH_ENDPOINT = process.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
+
+//FILES PUBLISHER
+export const SERVE_DELTA_FILES = process.env.SERVE_DELTA_FILES || false;
+export const LOG_OUTGOING_DELTA = process.env.LOG_OUTGOING_DELTA || false;
+export const DELTA_INTERVAL = process.env.DELTA_INTERVAL_MS || 1000;
+export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON == 'true';
+export const ERROR_GRAPH =  process.env.ERROR_GRAPH || 'http://mu.semte.ch/graphs/system/errors';
+export const RELATIVE_FILE_PATH = process.env.RELATIVE_FILE_PATH || 'deltas';
+export const FILES_GRAPH = process.env.FILES_GRAPH || 'http://mu.semte.ch/graphs/public';
+
+//LOGIN
+export const KEY = process.env.KEY || '';
+
+/*
+ * END EXPERIMENTAL FEATURES
+ */

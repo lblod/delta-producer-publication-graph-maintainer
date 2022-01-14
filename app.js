@@ -1,16 +1,20 @@
-import { app, errorHandler } from 'mu';
+import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
-import { updatePublicationGraph } from './jobs/publishing/main';
-import { doesDeltaContainNewTaskToProcess, isBlockingJobActive, hasInitialSyncRun } from './jobs/utils' ;
+import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
+import { KEY, LOG_INCOMING_DELTA, SERVE_DELTA_FILES, WAIT_FOR_INITIAL_SYNC } from './env-config';
+import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeScheduledTask } from './jobs/healing/main';
-import { LOG_INCOMING_DELTA, PUBLICATION_GRAPH, WAIT_FOR_INITIAL_SYNC } from './env-config';
-import { chain } from 'lodash';
+import { updatePublicationGraph } from './jobs/publishing/main';
+import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
 import { storeError } from './lib/utils';
 
 const producerQueue = new ProcessingQueue();
 
-app.use( bodyParser.json( { type: function(req) { return /^application\/json/.test( req.get('content-type') ); } } ) );
+app.use( bodyParser.json({
+  type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
+  limit: '500mb'
+}));
 
 app.post('/delta', async function( req, res ) {
   try {
@@ -65,7 +69,7 @@ app.post('/delta', async function( req, res ) {
     else {
       //normal operation mode: maintaining the publication graph
       //Put in a queue, because we want to make sure to have them ordered.
-      producerQueue.addJob(async () => { return await updatePublicationGraph(body); } );
+      producerQueue.addJob(async () => await runPublicationFlow(body));
     }
     res.status(202).send();
   }
@@ -73,6 +77,74 @@ app.post('/delta', async function( req, res ) {
     console.error(error);
     await storeError(error);
     res.status(500).send();
+  }
+});
+
+async function runPublicationFlow(deltas){
+  try {
+    const insertedDeltaData = await updatePublicationGraph(deltas);
+    if(SERVE_DELTA_FILES){
+      await publishDeltaFiles(insertedDeltaData);
+    }
+  }
+  catch(error){
+    console.error(error);
+    await storeError(error);
+  }
+}
+
+//This endpoint only makes sense if SERVE_DELTA_FILES is set to true;
+app.get('/files', async function( req, res ) {
+  const files = await getDeltaFiles( req.query.since );
+  res.json({ data: files });
+});
+
+// This endpoint can be used by the consumer to get a session
+// This is useful if the data in the files is confidential
+// Note that you will need to configure mu-auth so it can make sense out of it
+// TODO: probably this functionality will move somewhere else
+app.post('/login', async function(req, res) {
+  try {
+
+    // 0. To avoid false sense of security, login only makes sense if accepted key is configured
+    if(!KEY){
+      throw "No key configured in service.";
+    }
+
+    // 1. get environment info
+    const sessionUri = req.get('mu-session-id');
+
+    // 2. validate credentials
+    if( req.get("key") !== KEY ) {
+      throw "Key does not match";
+    }
+
+    // 3. add new login to session
+    updateSudo(`PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
+      INSERT DATA {
+        GRAPH <http://mu.semte.ch/graphs/diff-producer/login> {
+          ${sparqlEscapeUri(sessionUri)} muAccount:account <http://services.lblod.info/diff-consumer/account>.
+        }
+      }`);
+
+    // 4. request login recalculation
+    return res
+      .header('mu-auth-allowed-groups', 'CLEAR')
+      .status(201)
+      .send({
+        links: {
+          self: '/sessions/current'
+        },
+        data: {
+          type: 'sessions',
+
+          id: uuid()
+        }
+      });
+  }
+  catch (e) {
+    console.error(e);
+    return res.status(500).send({ message: "Something went wrong" });
   }
 });
 
