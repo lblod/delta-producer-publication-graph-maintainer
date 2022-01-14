@@ -12,6 +12,8 @@ import { STATUS_BUSY,
          SKIP_MU_AUTH_INITIAL_SYNC,
          VIRTUOSO_ENDPOINT,
          MU_AUTH_ENDPOINT,
+         PUBLICATION_VIRTUOSO_ENDPOINT,
+         PUBLICATION_MU_AUTH_ENDPOINT,
          MU_CALL_SCOPE_ID_INITIAL_SYNC,
          MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
        } from '../env-config';
@@ -67,10 +69,10 @@ export async function runHealingTask( task, isInitialSync ){
       extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
     }
 
-    let endpoint = MU_AUTH_ENDPOINT;
+    let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
     if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
       console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
-      endpoint = VIRTUOSO_ENDPOINT;
+      publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
     if(accumulatedDiffs.removals.length){
@@ -80,7 +82,7 @@ export async function runHealingTask( task, isInitialSync ){
                           500,
                           HEALING_PATCH_GRAPH_BATCH_SIZE,
                           extraHeaders,
-                          endpoint
+                          publicationEndpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
       await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
@@ -93,7 +95,7 @@ export async function runHealingTask( task, isInitialSync ){
                           500,
                           HEALING_PATCH_GRAPH_BATCH_SIZE,
                           extraHeaders,
-                          endpoint
+                          publicationEndpoint
                          );
       await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
@@ -170,7 +172,7 @@ async function getPublicationTriples(property, publicationGraph){
   `;
 
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, endpoint);
   let publicationNTriples = [];

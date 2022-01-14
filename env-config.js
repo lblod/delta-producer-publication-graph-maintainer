@@ -60,6 +60,8 @@ export const USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_E
 export const SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false ;
 export const VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT  || 'http://virtuoso:8890/sparql';
 export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
+export const PUBLICATION_VIRTUOSO_ENDPOINT = process.PUBLICATION_VIRTUOSO_ENDPOINT || VIRTUOSO_ENDPOINT;
+export const PUBLICATION_MU_AUTH_ENDPOINT = process.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
 
 //mainly for debugging purposes
 export const WAIT_FOR_INITIAL_SYNC = process.env.WAIT_FOR_INITIAL_SYNC == 'false' ? false : true ;

@@ -3,7 +3,8 @@ import { chain } from 'lodash';
 import { uuid } from 'mu';
 import { MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE,
          PUBLICATION_GRAPH, UPDATE_PUBLICATION_GRAPH_SLEEP, SKIP_MU_AUTH_DELTA_FOLDING,
-         VIRTUOSO_ENDPOINT, MU_AUTH_ENDPOINT } from '../env-config';
+         VIRTUOSO_ENDPOINT, MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT,
+         PUBLICATION_MU_AUTH_ENDPOINT } from '../env-config';
 import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../lib/utils';
 import { produceDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
@@ -34,7 +35,8 @@ export async function updatePublicationGraph( deltaPayload ){
                           'DELETE',
                           UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
-                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                          PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
@@ -44,7 +46,8 @@ export async function updatePublicationGraph( deltaPayload ){
                           'INSERT',
                           UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
-                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }
+                          { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                          PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
@@ -65,7 +68,7 @@ async function filterActualChangesToPublicationGraph(delta){
   // Comparing the atomic delete from delta directly to the target graph, to conclude it is an effective change yields
   // wrong results, because the insert:s1 won't be considered an effective insert.
   // I.e. we end up with delta: [ deletes: s1 ] to execute against the publication graph.
-  const dbEndpoint = SKIP_MU_AUTH_DELTA_FOLDING ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  const dbEndpoint = SKIP_MU_AUTH_DELTA_FOLDING ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   const foldedDelta = await foldChangeSet(delta, { dbEndpoint });
   const foldedDeletes = chain(foldedDelta).map(c => c.deletes).flatten().value();
   const foldedInserts = chain(foldedDelta).map(c => c.inserts).flatten().value();
