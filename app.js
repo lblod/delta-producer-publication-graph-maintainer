@@ -1,8 +1,8 @@
 import { app, errorHandler } from 'mu';
 import bodyParser from 'body-parser';
-import { updatePublicationGraph } from './publication-graph-maintenance/main';
-import { doesDeltaContainNewTaskToProcess, isBlockingJobActive, hasInitialSyncRun } from './jobs-processing/utils' ;
-import { executeScheduledTask } from './jobs-processing/main';
+import { updatePublicationGraph } from './jobs/publishing/main';
+import { doesDeltaContainNewTaskToProcess, isBlockingJobActive, hasInitialSyncRun } from './jobs/utils' ;
+import { executeScheduledTask } from './jobs/healing/main';
 import { LOG_INCOMING_DELTA, PUBLICATION_GRAPH, WAIT_FOR_INITIAL_SYNC } from './env-config';
 import { chain } from 'lodash';
 import { ProcessingQueue } from './lib/processing-queue';

@@ -8,8 +8,8 @@ import {
   serializeTriple,
   isSamePath,
   loadConfiguration
-} from '../lib/utils';
-import { LOG_DELTA_REWRITE, PUBLICATION_GRAPH } from '../env-config';
+} from '../../lib/utils';
+import { LOG_DELTA_REWRITE, PUBLICATION_GRAPH } from '../../env-config';
 
 const EXPORT_CONFIG = loadConfiguration();
 

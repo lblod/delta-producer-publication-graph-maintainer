@@ -16,10 +16,10 @@ import { STATUS_BUSY,
          PUBLICATION_MU_AUTH_ENDPOINT,
          MU_CALL_SCOPE_ID_INITIAL_SYNC,
          MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
-       } from '../env-config';
-import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../lib/task';
-import { sparqlEscapePredicate, batchedUpdate, serializeTriple, loadConfiguration } from '../lib/utils';
-import { writeTtlFile } from  '../lib/file-helpers';
+       } from '../../env-config';
+import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../../lib/task';
+import { sparqlEscapePredicate, batchedUpdate, serializeTriple, loadConfiguration } from '../../lib/utils';
+import { writeTtlFile } from  '../../lib/file-helpers';
 import { uniq } from 'lodash';
 
 const EXPORT_CONFIG = loadConfiguration();

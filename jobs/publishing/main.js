@@ -4,8 +4,8 @@ import { uuid } from 'mu';
 import { MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE,
          PUBLICATION_GRAPH, UPDATE_PUBLICATION_GRAPH_SLEEP, SKIP_MU_AUTH_DELTA_FOLDING,
          VIRTUOSO_ENDPOINT, MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT,
-         PUBLICATION_MU_AUTH_ENDPOINT } from '../env-config';
-import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../lib/utils';
+         PUBLICATION_MU_AUTH_ENDPOINT } from '../../env-config';
+import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../../lib/utils';
 import { produceDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
 
@@ -20,17 +20,15 @@ export async function updatePublicationGraph( deltaPayload ){
     const deletes = chain(actualchanges)
           .map(c => c.deletes)
           .flatten()
-          .map(t => serializeTriple(t))
           .value();
 
     const inserts = chain(actualchanges)
           .map(c => c.inserts)
           .flatten()
-          .map(t => serializeTriple(t))
           .value();
 
     if(deletes.length){
-      await batchedUpdate(deletes,
+      await batchedUpdate(deletes.map(t => serializeTriple(t)),
                           PUBLICATION_GRAPH,
                           'DELETE',
                           UPDATE_PUBLICATION_GRAPH_SLEEP,
@@ -41,7 +39,7 @@ export async function updatePublicationGraph( deltaPayload ){
     }
 
     if(inserts.length){
-      await batchedUpdate(inserts,
+      await batchedUpdate(inserts.map(t => serializeTriple(t)),
                           PUBLICATION_GRAPH,
                           'INSERT',
                           UPDATE_PUBLICATION_GRAPH_SLEEP,
@@ -51,11 +49,14 @@ export async function updatePublicationGraph( deltaPayload ){
                          );
     }
 
+    return { inserts, deletes };
+
   }
   catch(error){
     const errorMsg = `Error while processing delta ${error}`;
     console.error(errorMsg);
     await storeError(errorMsg);
+    throw error;
   }
 }
 

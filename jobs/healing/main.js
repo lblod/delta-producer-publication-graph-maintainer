@@ -8,11 +8,11 @@ import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
          TASK_TYPE,
          PREFIXES,
          JOB_TYPE
-       } from '../env-config';
+       } from '../../env-config';
 
-import { loadTask } from '../lib/task';
+import { loadTask } from '../../lib/task';
 import { runHealingTask } from './pipeline-healing';
-import { parseResult, storeError } from '../lib/utils';
+import { parseResult, storeError } from '../../lib/utils';
 
 export async function executeScheduledTask(){
 
