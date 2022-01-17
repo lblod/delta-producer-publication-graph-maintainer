@@ -14,7 +14,7 @@ import { loadTask } from '../../lib/task';
 import { runHealingTask } from './pipeline-healing';
 import { parseResult, storeError } from '../../lib/utils';
 
-export async function executeScheduledTask(){
+export async function executeHealingTask(){
 
   try {
     //TODO: extra checks are required to make sure the system remains in consistent state
@@ -23,18 +23,23 @@ export async function executeScheduledTask(){
     const syncTaskUri = await getTaskUri(INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION, INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, STATUS_SCHEDULED);
     const healingTaskUri = await getTaskUri(HEALING_JOB_OPERATION, HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, STATUS_SCHEDULED);
 
+    let delta = { inserts: [], deletes: [] };
+
     if(syncTaskUri){
       const task = await loadTask(syncTaskUri);
       await runHealingTask(task, true);
     }
     else if(healingTaskUri){
       const task = await loadTask(healingTaskUri);
-      await runHealingTask(task);
+      delta = await runHealingTask(task);
     }
+
+    return delta;
   }
   catch(e){
     console.error(e);
     await storeError(e);
+    throw e;
   }
 }
 

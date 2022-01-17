@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import { KEY, LOG_INCOMING_DELTA, SERVE_DELTA_FILES, WAIT_FOR_INITIAL_SYNC } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
-import { executeScheduledTask } from './jobs/healing/main';
+import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
@@ -29,7 +29,7 @@ app.post('/delta', async function( req, res ) {
       console.log(`There were still ${producerQueue.queue.length} jobs in the queue`);
       console.log(`And the queue executing state is on ${producerQueue.executing}.`);
       producerQueue.queue = []; //Flush all remaining jobs, we don't want moving parts cf. next comment
-      producerQueue.addJob(async () => { return await executeScheduledTask(); } );
+      producerQueue.addJob(async () => { return await runHealingFlow(); } );
     }
     else if(await isBlockingJobActive()){
       // Durig the healing (and probably inital sync too) we want as few as much moving parts,
@@ -79,6 +79,19 @@ app.post('/delta', async function( req, res ) {
     res.status(500).send();
   }
 });
+
+async function runHealingFlow(){
+  try {
+    const insertedDeltaData = await executeHealingTask();
+    if(SERVE_DELTA_FILES){
+      await publishDeltaFiles(insertedDeltaData);
+    }
+  }
+  catch(error){
+    console.error(error);
+    await storeError(error);
+  }
+}
 
 async function runPublicationFlow(deltas){
   try {

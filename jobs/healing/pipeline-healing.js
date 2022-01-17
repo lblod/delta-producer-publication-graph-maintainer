@@ -35,7 +35,7 @@ export async function runHealingTask( task, isInitialSync ){
 
     const propertyMap = groupPathToConceptSchemePerProperty(EXPORT_CONFIG.export);
 
-    let accumulatedDiffs = { additions: [], removals: [] };
+    let accumulatedDiffs = { inserts: [], deletes: [] };
 
     //Some explanation:
     // The triples to push to the publication graph should be equal to
@@ -57,10 +57,10 @@ export async function runHealingTask( task, isInitialSync ){
       const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
 
       console.log('Calculating diffs, this may take a while');
-      const diffs = diffNTriples(sourceTriples, publicationGraphTriples);
+      const diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
 
-      accumulatedDiffs.removals = [ ...accumulatedDiffs.removals, ...diffs.removals ];
-      accumulatedDiffs.additions = [ ...accumulatedDiffs.additions, ...diffs.additions ];
+      accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
+      accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
 
     }
 
@@ -75,8 +75,9 @@ export async function runHealingTask( task, isInitialSync ){
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
-    if(accumulatedDiffs.removals.length){
-      await batchedUpdate(accumulatedDiffs.removals,
+    if(accumulatedDiffs.deletes.length){
+      const deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
+      await batchedUpdate(deletes,
                           PUBLICATION_GRAPH,
                           'DELETE',
                           500,
@@ -85,11 +86,12 @@ export async function runHealingTask( task, isInitialSync ){
                           publicationEndpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-      await createResultsContainer(task, accumulatedDiffs.removals, REMOVAL_CONTAINER, 'removed-triples.ttl');
+      await createResultsContainer(task, deletes, REMOVAL_CONTAINER, 'removed-triples.ttl');
     }
 
-    if(accumulatedDiffs.additions.length){
-      await batchedUpdate(accumulatedDiffs.additions,
+    if(accumulatedDiffs.inserts.length){
+      const inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
+      await batchedUpdate(inserts,
                           PUBLICATION_GRAPH,
                           'INSERT',
                           500,
@@ -97,17 +99,19 @@ export async function runHealingTask( task, isInitialSync ){
                           extraHeaders,
                           publicationEndpoint
                          );
-      await createResultsContainer(task, accumulatedDiffs.additions, INSERTION_CONTAINER, 'inserted-triples.ttl');
+      await createResultsContainer(task, inserts, INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
 
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
     await updateTaskStatus(task, STATUS_SUCCESS);
+    return { inserts: accumulatedDiffs.inserts.map(t => t.originalFormat),  deletes: accumulatedDiffs.deletes.map(t => t.originalFormat) };
   }
   catch(e){
     console.error(e);
     await appendTaskError(task, e.message || e);
     await updateTaskStatus(task, STATUS_FAILED);
+    throw e;
   }
 }
 
@@ -149,10 +153,9 @@ async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
                                                              PUBLICATION_GRAPH,
                                                              EXPORT_CONFIG);
 
-    const diffs = diffNTriples(scopedSourceTriples, sourceTriples);
-    sourceTriples = [ ...sourceTriples, ...diffs.additions ];
+    const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
+    sourceTriples = [ ...sourceTriples, ...diffs.inserts ];
   }
-  sourceTriples = uniq(sourceTriples);
 
   return sourceTriples;
 }
@@ -175,15 +178,7 @@ async function getPublicationTriples(property, publicationGraph){
   const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, endpoint);
-  let publicationNTriples = [];
-
-  if(result.results && result.results.bindings && result.results.bindings.length){
-    const triples = result.results.bindings;
-    publicationNTriples = triples.map(t => serializeTriple(t));
-  }
-
-  return publicationNTriples;
-
+  return reformatQueryResult(result);
 }
 
 /*
@@ -242,33 +237,42 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromDatabase, {}, endpoint);
-  let sourceNTriples = [];
-
-  if(result.results && result.results.bindings && result.results.bindings.length){
-    const triples = result.results.bindings;
-    sourceNTriples = triples.map(t => serializeTriple(t));
-  }
-
-  return sourceNTriples;
+  return reformatQueryResult(result);
 }
 
-function diffNTriples(target, source) {
+function diffTriplesData(target, source) {
   //Note: this only works correctly if triples have same lexical notation.
   //So think about it, when copy pasting :-)
-  const diff = { additions: [], removals: [] };
+  const diff = { inserts: [], deletes: [] };
 
   const targetHash = target.reduce((acc, curr) => {
-    acc[curr] = curr;
+    acc[curr.nTriple] = curr;
     return acc;
   }, {});
 
   const sourceHash = source.reduce((acc, curr) => {
-    acc[curr] = curr;
+    acc[curr.nTriple] = curr;
     return acc;
   }, {});
 
-  diff.additions = target.filter(nt => !sourceHash[nt]);
-  diff.removals = source.filter(nt => !targetHash[nt]);
+  diff.inserts = target.filter(nt => !sourceHash[nt.nTriple]);
+  diff.deletes = source.filter(nt => !targetHash[nt.nTriple]);
 
   return diff;
+}
+
+function reformatQueryResult( result ){
+  let triplesData = [];
+
+  if(result.results && result.results.bindings && result.results.bindings.length){
+    const triples = result.results.bindings;
+    triplesData = triples.map(t => {
+      return {
+        nTriple: serializeTriple(t),
+        originalFormat: t
+      };
+    });
+  }
+
+  return triplesData;
 }
