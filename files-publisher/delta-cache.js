@@ -37,7 +37,9 @@ export default class DeltaCache {
       this.cache = [];
 
       try {
-        const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}`;
+        const folderDate = new Date();
+        const subFolder = folderDate.toISOString().split('T')[0];
+        const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}/${subFolder}`;
         fs.mkdirSync(outputDirectory, { recursive: true });
 
         const filename = `delta-${new Date().toISOString()}.json`;
