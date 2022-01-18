@@ -219,3 +219,22 @@ Reason for this: current implementation makes it very difficult to exclude the p
   - incoming deltas are not checked for graph, this might lead for weird behaviour (corrected by the healing process though).
   - Deletion of triples and related resources doesn't work, but more importantly needs further thinking.
     - In some cases we might produce conflicting information, e.g a person both being a mandataris and leidinggevenden.
+## Experimental features
+### Support for publication graph residing in another triplestore
+If publication graphs affect performance of the database too much, you can choose to store this information in another database.
+By configuring the following environment variables:
+```
+  "PUBLICATION_VIRTUOSO_ENDPOINT": "http://virtuoso-2/sparql"
+  "PUBLICATION_MU_AUTH_ENDPOINT": "http://database-2/sparql"
+```
+the service can maintain the publication graph residing in another database.
+### SERVE_DELTA_FILES
+By setting this to "true", this service creates and host delta-files. In essence it takes over the role of [delta-producer-json-diff-file-publisher](https://github.com/lblod/delta-producer-json-diff-file-publisher).
+The motivation of merge this functionality back here:
+  - Occam's razor applied applied on services for sane defaults: in many cases, the format of the published files will be the same as what is generated with `delta-producer-json-diff-file-publisher`.
+    Hence, it was considered in practice cumbersome to instantiate another service for this.
+  - If using another triplestore for the publication graph, this functionality might come in handy if you just want a triple store, not wrapped in a second instance of mu-auth. The serialization of the information to publish, is performed directly (if this feature is enabled) and not through deltas.
+  - Increased robustness in the publication process.
+    Since the serialization is not dependent on delta's, chances are reduced the published files and the publication graph get out of sync.
+
+It might be this feature gets extended, i.e. more serialization formats, or completly removed. Practice will tell.
