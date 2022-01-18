@@ -36,7 +36,7 @@ export async function publishDeltaFiles( delta ){
   }
 }
 
-export async function getDeltaFile( since ){
+export async function getDeltaFiles( since ){
   since = since || new Date().toISOString();
   const files = await cache.getDeltaFiles(since);
   return files;
