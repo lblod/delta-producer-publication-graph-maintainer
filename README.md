@@ -210,7 +210,7 @@ The healing compensates for this discrepancy, but be aware that as long as the h
 The reason complicated filters don't work: Suppose `?sForExport validatedBy <http://some/operator>` has been published, and in a second step, the `<http://some/operator>` gets a different role. This would imply the resource `?sForExport` should be retracted. In live syncing mode, there is no logic present to intercept such a trigger.
 #### filters only in same graph
 The filter will only work in the same graph as where the `?sToExport` resides.
-Reason for this: current implementation makes it very difficult to exlude the publication graph when filtering (by default). Hence the limitation.
+Reason for this: current implementation makes it very difficult to exclude the publication graph when filtering (by default). Hence the limitation.
 
 ## Roadmap
 * Add support for a prefix map in the export configuration
