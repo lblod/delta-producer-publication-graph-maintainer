@@ -20,6 +20,8 @@ import { STATUS_BUSY,
 import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../../lib/task';
 import { sparqlEscapePredicate, batchedUpdate, serializeTriple, loadConfiguration } from '../../lib/utils';
 import { writeTtlFile } from  '../../lib/file-helpers';
+import { appendPublicationGraph } from '../utils';
+
 import { uniq } from 'lodash';
 
 const EXPORT_CONFIG = loadConfiguration();
@@ -105,7 +107,10 @@ export async function runHealingTask( task, isInitialSync ){
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
     await updateTaskStatus(task, STATUS_SUCCESS);
-    return { inserts: accumulatedDiffs.inserts.map(t => t.originalFormat),  deletes: accumulatedDiffs.deletes.map(t => t.originalFormat) };
+    return {
+             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(t.originalFormat)),
+             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(t.originalFormat))
+           };
   }
   catch(e){
     console.error(e);

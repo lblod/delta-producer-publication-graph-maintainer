@@ -1,16 +1,18 @@
-import { sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
-import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
-         HEALING_JOB_OPERATION,
-         HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
-         INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION,
-         STATUS_SUCCESS,
-         STATUS_BUSY,
-         STATUS_SCHEDULED,
-         TASK_TYPE,
-         PREFIXES,
-         JOB_TYPE
-       } from '../env-config';
+import { sparqlEscapeUri } from 'mu';
+import {
+  HEALING_JOB_OPERATION,
+  HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
+  INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
+  INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION,
+  JOB_TYPE,
+  PREFIXES,
+  PUBLICATION_GRAPH,
+  STATUS_BUSY,
+  STATUS_SCHEDULED,
+  STATUS_SUCCESS,
+  TASK_TYPE
+} from '../env-config';
 import { Delta } from '../lib/delta';
 
 export async function doesDeltaContainNewTaskToProcess( deltaPayload ){
@@ -95,4 +97,12 @@ async function isNewTaskOfInterest( taskUri ){
 
   const result = await query(queryString);
   return result.results.bindings.length > 0;
+}
+
+export function appendPublicationGraph( tripleObject ){
+  tripleObject.graph = {
+    value: PUBLICATION_GRAPH,
+    type: "uri"
+  };
+  return tripleObject;
 }

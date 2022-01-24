@@ -8,6 +8,7 @@ import { MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE,
 import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../../lib/utils';
 import { produceDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
+import { appendPublicationGraph } from '../utils';
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
@@ -49,8 +50,10 @@ export async function updatePublicationGraph( deltaPayload ){
                          );
     }
 
-    return { inserts, deletes };
-
+    return {
+      inserts: inserts.map(t => appendPublicationGraph(t)),
+      deletes: deletes.map(t => appendPublicationGraph(t))
+    };
   }
   catch(error){
     const errorMsg = `Error while processing delta ${error}`;
