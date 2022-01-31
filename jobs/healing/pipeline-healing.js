@@ -182,7 +182,7 @@ async function getPublicationTriples(property, publicationGraph){
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
   const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await query(selectFromPublicationGraph, {}, endpoint);
+  const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);
 }
 
@@ -241,7 +241,7 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
   const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await query(selectFromDatabase, {}, endpoint);
+  const result = await query(selectFromDatabase, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);
 }
 

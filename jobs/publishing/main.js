@@ -183,7 +183,11 @@ async function foldChangeSet( delta, config ){
       `;
     };
 
-    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }, config.dbEnpoint);
-    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE }, config.dbEnpoint);
+    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                 { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
+                );
+    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                 { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
+                );
   }
 }
