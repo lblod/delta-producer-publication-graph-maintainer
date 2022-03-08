@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
@@ -36,29 +37,32 @@ export default class DeltaCache {
       const cachedArray = this.cache;
       this.cache = [];
 
-      try {
-        const folderDate = new Date();
-        const subFolder = folderDate.toISOString().split('T')[0];
-        const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}/${subFolder}`;
-        fs.mkdirSync(outputDirectory, { recursive: true });
+      const chunkedArray = chunkCache(cachedArray);
+      for(const entry of chunkedArray) {
+        try {
+          const folderDate = new Date();
+          const subFolder = folderDate.toISOString().split('T')[0];
+          const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}/${subFolder}`;
+          fs.mkdirSync(outputDirectory, { recursive: true });
 
-        const filename = `delta-${new Date().toISOString()}.json`;
-        const filepath = `${outputDirectory}/${filename}`;
+          const filename = `delta-${new Date().toISOString()}.json`;
+          const filepath = `${outputDirectory}/${filename}`;
 
-        if(PRETTY_PRINT_DIFF_JSON){
-          await fs.writeFile(filepath, JSON.stringify( cachedArray, null, 2 ));
+          if(PRETTY_PRINT_DIFF_JSON){
+            await fs.writeFile(filepath, JSON.stringify( entry, null, 2 ));
+          }
+          else {
+            await fs.writeFile(filepath, JSON.stringify( entry ));
+          }
+
+          console.log(`Delta cache has been written to file. Cache contained ${entry.length} items.`);
+
+          await this.writeFileToStore(filename, filepath);
+          console.log("File is persisted in store and can be consumed now.");
+
+        } catch (e) {
+          await storeError(e);
         }
-        else {
-          await fs.writeFile(filepath, JSON.stringify( cachedArray ));
-        }
-
-        console.log(`Delta cache has been written to file. Cache contained ${cachedArray.length} items.`);
-
-        await this.writeFileToStore(filename, filepath);
-        console.log("File is persisted in store and can be consumed now.");
-
-      } catch (e) {
-        await storeError(e);
       }
     } else {
       console.log("Empty cache. Nothing to save on disk");
@@ -136,4 +140,35 @@ export default class DeltaCache {
     }
   `, { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
   }
+}
+
+/**
+ * Chunks the cached array, to not exploded memory when writing to json
+ * @param cache: [ { inserts: [], deletes: [] }, { inserts: [], deletes: [] } ]
+ * @return [ [ { inserts: [], deletes: [] } ], [ { inserts: [], deletes: [] } ] ]
+ */
+function chunkCache( cache ) {
+  const allChunks = [];
+  for(const entry of cache){
+
+    //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
+    const insertChunks = _.chunk(entry.inserts, 100);
+    const deleteChunks = _.chunk(entry.deletes, 100);
+
+    if(deleteChunks.length > 1 || insertChunks.length > 1 ){
+      for(const deleteChunk of deleteChunks){
+        const chunk = { inserts: [], deletes: deleteChunk };
+        allChunks.push(chunk);
+      }
+
+      for(const insertChunk of insertChunks){
+        const chunk = { inserts: insertChunk, deletes: [] };
+        allChunks.push(chunk);
+      }
+    }
+    else {
+      allChunks.push(entry);
+    }
+  }
+  return _.chunk(allChunks, 10);
 }
