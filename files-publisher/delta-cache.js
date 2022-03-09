@@ -7,7 +7,9 @@ import {
     FILES_GRAPH,
     MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PREFIXES,
     PRETTY_PRINT_DIFF_JSON, PUBLISHER_URI,
-    RELATIVE_FILE_PATH
+    RELATIVE_FILE_PATH,
+    CACHE_CHUNK_STATEMENT,
+    CACHE_CHUNK_ARRAY
 } from '../env-config';
 
 const SHARE_FOLDER = '/share';
@@ -34,18 +36,18 @@ export default class DeltaCache {
   */
   async generateDeltaFile() {
     if (this.cache.length) {
-      const cachedArray = this.cache;
+      const cachedArray = [ ...this.cache ];
       this.cache = [];
 
       const chunkedArray = chunkCache(cachedArray);
-      for(const entry of chunkedArray) {
+      for(const [ index, entry ] of chunkedArray.entries()) {
         try {
           const folderDate = new Date();
           const subFolder = folderDate.toISOString().split('T')[0];
           const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}/${subFolder}`;
           fs.mkdirSync(outputDirectory, { recursive: true });
 
-          const filename = `delta-${new Date().toISOString()}.json`;
+          const filename = `delta-${new Date().toISOString()}-${index}.json`;
           const filepath = `${outputDirectory}/${filename}`;
 
           if(PRETTY_PRINT_DIFF_JSON){
