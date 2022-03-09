@@ -114,7 +114,7 @@ async function tripleExists( tripleObject, graph, config ){
     }
   `;
 
-  const result = await query(existsQuery, {}, config.dbEndpoint);
+  const result = await query(existsQuery, {}, { sparqlEndpoint: config.dbEndpoint, mayRetry: true } );
   return result.boolean;
 }
 
