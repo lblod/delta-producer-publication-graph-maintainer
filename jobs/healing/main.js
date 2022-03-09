@@ -1,18 +1,15 @@
-import { sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
-import { INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
-         INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION,
-         HEALING_JOB_OPERATION,
-         HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION,
-         STATUS_SCHEDULED,
-         TASK_TYPE,
-         PREFIXES,
-         JOB_TYPE
-       } from '../../env-config';
-
-import { loadTask } from '../../lib/task';
-import { runHealingTask } from './pipeline-healing';
+import { sparqlEscapeUri } from 'mu';
+import {
+    HEALING_JOB_OPERATION,
+    HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
+    INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, JOB_TYPE, PREFIXES, SERVE_DELTA_FILES, STATUS_BUSY,
+    STATUS_FAILED, STATUS_SCHEDULED, STATUS_SUCCESS, TASK_TYPE
+} from '../../env-config';
+import { publishDeltaFiles } from '../../files-publisher/main';
+import { appendTaskError, loadTask, updateTaskStatus } from '../../lib/task';
 import { parseResult, storeError } from '../../lib/utils';
+import { runHealingTask } from './pipeline-healing';
 
 export async function executeHealingTask(){
 
@@ -25,13 +22,21 @@ export async function executeHealingTask(){
 
     let delta = { inserts: [], deletes: [] };
 
-    if(syncTaskUri){
-      const task = await loadTask(syncTaskUri);
-      await runHealingTask(task, true);
-    }
-    else if(healingTaskUri){
-      const task = await loadTask(healingTaskUri);
-      delta = await runHealingTask(task);
+    if(syncTaskUri || healingTaskUri) {
+      const task = await loadTask(syncTaskUri || healingTaskUri);
+      try {
+        await updateTaskStatus(task, STATUS_BUSY);
+        delta = await runHealingTask(task, syncTaskUri ? true : false);
+        if(SERVE_DELTA_FILES && healingTaskUri){
+          await publishDeltaFiles(delta);
+        }
+        await updateTaskStatus(task, STATUS_SUCCESS);
+      }
+      catch(e) {
+        await appendTaskError(task, e.message || e);
+        await updateTaskStatus(task, STATUS_FAILED);
+        throw e;
+      }
     }
 
     return delta;

@@ -29,7 +29,7 @@ app.post('/delta', async function( req, res ) {
       console.log(`There were still ${producerQueue.queue.length} jobs in the queue`);
       console.log(`And the queue executing state is on ${producerQueue.executing}.`);
       producerQueue.queue = []; //Flush all remaining jobs, we don't want moving parts cf. next comment
-      producerQueue.addJob(async () => { return await runHealingFlow(); } );
+      producerQueue.addJob(async () => { return await executeHealingTask(); } );
     }
     else if(await isBlockingJobActive()){
       // Durig the healing (and probably inital sync too) we want as few as much moving parts,
@@ -79,19 +79,6 @@ app.post('/delta', async function( req, res ) {
     res.status(500).send();
   }
 });
-
-async function runHealingFlow(){
-  try {
-    const insertedDeltaData = await executeHealingTask();
-    if(SERVE_DELTA_FILES){
-      await publishDeltaFiles(insertedDeltaData);
-    }
-  }
-  catch(error){
-    console.error(error);
-    await storeError(error);
-  }
-}
 
 async function runPublicationFlow(deltas){
   try {

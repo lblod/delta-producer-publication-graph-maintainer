@@ -1,35 +1,22 @@
-import { uuid, sparqlEscapeString, sparqlEscapeUri } from 'mu';
 import { querySudo as query } from '@lblod/mu-auth-sudo';
-import { STATUS_BUSY,
-         STATUS_FAILED,
-         STATUS_SUCCESS,
-         PUBLICATION_GRAPH,
-         HEALING_PATCH_GRAPH_BATCH_SIZE,
-         INSERTION_CONTAINER,
-         REMOVAL_CONTAINER,
-         REPORTING_FILES_GRAPH,
-         USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS,
-         SKIP_MU_AUTH_INITIAL_SYNC,
-         VIRTUOSO_ENDPOINT,
-         MU_AUTH_ENDPOINT,
-         PUBLICATION_VIRTUOSO_ENDPOINT,
-         PUBLICATION_MU_AUTH_ENDPOINT,
-         MU_CALL_SCOPE_ID_INITIAL_SYNC,
-         MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
-       } from '../../env-config';
-import {  updateTaskStatus, appendTaskError, appendTaskResultFile } from '../../lib/task';
-import { sparqlEscapePredicate, batchedUpdate, serializeTriple, loadConfiguration } from '../../lib/utils';
-import { writeTtlFile } from  '../../lib/file-helpers';
+import { uniq } from 'lodash';
+import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
+import {
+    HEALING_PATCH_GRAPH_BATCH_SIZE,
+    INSERTION_CONTAINER, MU_AUTH_ENDPOINT, MU_CALL_SCOPE_ID_INITIAL_SYNC,
+    MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PUBLICATION_GRAPH, PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT, REMOVAL_CONTAINER,
+    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT
+} from '../../env-config';
+import { writeTtlFile } from '../../lib/file-helpers';
+import { appendTaskResultFile } from '../../lib/task';
+import { batchedUpdate, loadConfiguration, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
 import { appendPublicationGraph } from '../utils';
 
-import { uniq } from 'lodash';
 
 const EXPORT_CONFIG = loadConfiguration();
 
-export async function runHealingTask( task, isInitialSync ){
+export async function runHealingTask( task, isInitialSync ) {
   try {
-    await updateTaskStatus(task, STATUS_BUSY);
-
     const conceptSchemeUri = EXPORT_CONFIG.conceptScheme;
     const started = new Date();
 
@@ -106,7 +93,6 @@ export async function runHealingTask( task, isInitialSync ){
 
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
-    await updateTaskStatus(task, STATUS_SUCCESS);
     return {
              inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(t.originalFormat)),
              deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(t.originalFormat))
@@ -114,8 +100,6 @@ export async function runHealingTask( task, isInitialSync ){
   }
   catch(e){
     console.error(e);
-    await appendTaskError(task, e.message || e);
-    await updateTaskStatus(task, STATUS_FAILED);
     throw e;
   }
 }
