@@ -152,8 +152,8 @@ function chunkCache( cache ) {
   for(const entry of cache){
 
     //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
-    const insertChunks = _.chunk(entry.inserts, 100);
-    const deleteChunks = _.chunk(entry.deletes, 100);
+    const insertChunks = _.chunk(entry.inserts, CACHE_CHUNK_STATEMENT);
+    const deleteChunks = _.chunk(entry.deletes, CACHE_CHUNK_STATEMENT);
 
     if(deleteChunks.length > 1 || insertChunks.length > 1 ){
       for(const deleteChunk of deleteChunks){
@@ -170,5 +170,5 @@ function chunkCache( cache ) {
       allChunks.push(entry);
     }
   }
-  return _.chunk(allChunks, 10);
+  return _.chunk(allChunks, CACHE_CHUNK_ARRAY);
 }

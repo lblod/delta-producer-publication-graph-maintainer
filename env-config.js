@@ -89,6 +89,8 @@ export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON == 'tru
 export const ERROR_GRAPH =  process.env.ERROR_GRAPH || 'http://mu.semte.ch/graphs/system/errors';
 export const RELATIVE_FILE_PATH = process.env.RELATIVE_FILE_PATH || 'deltas';
 export const FILES_GRAPH = process.env.FILES_GRAPH || 'http://mu.semte.ch/graphs/public';
+export const CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
+export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
 
 //LOGIN
 export const KEY = process.env.KEY || '';
