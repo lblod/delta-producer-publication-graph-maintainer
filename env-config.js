@@ -94,6 +94,7 @@ export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
 
 //LOGIN
 export const KEY = process.env.KEY || '';
+export const ACCOUNT = process.env.ACCOUNT || 'http://services.lblod.info/diff-consumer/account';
 
 /*
  * END EXPERIMENTAL FEATURES
