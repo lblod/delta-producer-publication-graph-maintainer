@@ -238,3 +238,90 @@ The motivation of merge this functionality back here:
     Since the serialization is not dependent on delta's, chances are reduced the published files and the publication graph get out of sync.
 
 It might be this feature gets extended, i.e. more serialization formats, or completly removed. Practice will tell.
+
+### Login + ACL
+Published data may be wrapped up in an authorization layer, i.e. the delta files will only availble to agents with access.
+It relies on mu-auth to follow the authorization scheme.
+The following configuration needs to be added. Suppose the deltas to share are about 'persons-sensitive'.
+#### docker-compose.yml
+```
+  # (...)
+  KEY: "shared secret key between consumer and producer"
+  ACCOUNT: "http://an/account/enabling/acces/to/delta-files-graph"
+  FILES_GRAPH: "http://redpencil.data.gift/id/deltas/producer/persons-sensitive"
+```
+#### dispatcher
+```
+  post "/sync/persons-sensitive-deltas/login/*path" do
+    Proxy.forward conn, path, "http://delta-producer-publication-graph-maintainer-instance/login/"
+  end
+
+  get "/sync/persons-sensitive-deltas/files/*path" do
+    Proxy.forward conn, path, "http://delta-producer-publication-graph-maintainer-instance/files/"
+  end
+```
+#### migrations
+The ACL follows foaf model, as an example.
+Alternative modeling of the authorization scheme is possible, the only key here is: the files-data should be stored in a specific graph (for now).
+```
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+INSERT DATA {
+  GRAPH <http://mu.semte.ch/graphs/diff-producer/login> { #Note this graph is configurable
+     <http://an/account/enabling/acces/to/delta-files-graph>  a foaf:OnlineAccount.
+
+     <http://the/agent/who/may/access/persons-sensitive-deltas> a foaf:Agent;
+         foaf:account <http://an/account/enabling/acces/to/delta-files-graph>.
+
+     <http://the/group/of/agents/allowed/persons-sensitive-deltas> a foaf:Group;
+       foaf:member <http://the/agent/who/may/access/persons-sensitive-deltas>;
+       foaf:name "persons-sensitive-deltas".
+  }
+}
+```
+#### authorization
+Alternative modeling of the authorization scheme is possible, the only key here is: the files-data should be stored in a specific graph (for now).
+Furthermore, better to be as restrictive as possible, i.e. not using the mu-auth feature of writing data to multiple graphs.
+```
+# (...)
+defmodule Acl.UserGroups.Config do
+
+  defp can_access_deltas_persons_sensitive_data() do
+    %AccessByQuery{
+      vars: [ ],
+      query: "
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
+        SELECT DISTINCT ?onlineAccount WHERE {
+          <SESSION_ID> muAccount:account ?onlineAccount.
+
+          ?onlineAccount  a foaf:OnlineAccount.
+
+          ?agent a foaf:Agent;
+            foaf:account ?onlineAccount.
+
+          <http://the/group/of/agents/allowed/persons-sensitive-deltas> foaf:member ?agent;
+            foaf:name \"persons-sensitive-deltas\".
+        }"
+      }
+  end
+
+  def user_groups do
+    [
+
+      %GroupSpec{
+        name: "o-persons-sensitive-deltas-rwf",
+        useage: [:read, :write, :read_for_write],
+        access: can_access_deltas_persons_sensitive_data(),
+        graphs: [ %GraphSpec{
+                    graph: "http://redpencil.data.gift/id/deltas/producer/persons-sensitive",
+                    constraint: %ResourceConstraint{
+                      resource_types: [
+                        "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#FileDataObject",
+                        "http://www.w3.org/ns/dcat#Dataset", # is needed in dump file
+                        "http://www.w3.org/ns/dcat#Distribution",
+                      ] } } ] },
+    ]
+  end
+
+end
+```
