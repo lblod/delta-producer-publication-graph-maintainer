@@ -1,7 +1,7 @@
 import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
-import { KEY, LOG_INCOMING_DELTA, SERVE_DELTA_FILES, WAIT_FOR_INITIAL_SYNC, ACCOUNT } from './env-config';
+import { KEY, LOG_INCOMING_DELTA, SERVE_DELTA_FILES, WAIT_FOR_INITIAL_SYNC, ACCOUNT, ACCOUNT_GRAPH } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
@@ -123,7 +123,7 @@ app.post('/login', async function(req, res) {
     updateSudo(`
       PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
       INSERT DATA {
-        GRAPH <http://mu.semte.ch/graphs/diff-producer/login> {
+        GRAPH ${sparqlEscapeUri(ACCOUNT_GRAPH)} {
           ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(ACCOUNT)}.
         }
       }`);
