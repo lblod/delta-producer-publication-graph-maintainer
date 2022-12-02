@@ -30,6 +30,7 @@ export const STATUS_CANCELED = 'http://redpencil.data.gift/id/concept/JobStatus/
 
 export const ERROR_TYPE= 'http://open-services.net/ns/core#Error';
 export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
+export const ERROR_CREATOR_URI = process.env.ERROR_CREATOR_URI || 'http://lblod.data.gift/services/delta-producer-publication-graph-maintainer';
 
 //task operation of interest
 export const HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchPublicationGraph';
