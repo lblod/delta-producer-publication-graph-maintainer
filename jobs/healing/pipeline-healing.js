@@ -5,26 +5,36 @@ import {
     HEALING_PATCH_GRAPH_BATCH_SIZE,
     INSERTION_CONTAINER, MU_AUTH_ENDPOINT, MU_CALL_SCOPE_ID_INITIAL_SYNC,
     MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PUBLICATION_GRAPH, PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT, REMOVAL_CONTAINER,
-    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT
+    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT, SERVE_DELTA_FILES
 } from '../../env-config';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
 import { batchedUpdate, loadConfiguration, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
 import { appendPublicationGraph } from '../utils';
+import { publishDeltaFiles } from '../../files-publisher/main';
 
 
 const EXPORT_CONFIG = loadConfiguration();
 
-export async function runHealingTask( task, isInitialSync ) {
+export async function runHealingTask (task, isInitialSync) {
   try {
     const conceptSchemeUri = EXPORT_CONFIG.conceptScheme;
     const started = new Date();
 
     console.log(`starting at ${started}`);
 
-    const propertyMap = groupPathToConceptSchemePerProperty(EXPORT_CONFIG.export);
+    let extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
+    if(isInitialSync){
+      extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
+    }
 
-    let accumulatedDiffs = { inserts: [], deletes: [] };
+    let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
+    if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+      console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
+      publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
+    }
+
+    const propertyMap = groupPathToConceptSchemePerProperty(EXPORT_CONFIG.export);
 
     //Some explanation:
     // The triples to push to the publication graph should be equal to
@@ -40,63 +50,56 @@ export async function runHealingTask( task, isInitialSync ) {
     //
     // With this result, we have a complete picture for a specific ?p to caclulating the difference.
     // The addtions are A\B, and removals are B\A
+    let insertCounter = 0;
+    let deleteCounter = 0;
     for(const property of Object.keys(propertyMap)){
-
       const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
       const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
 
       console.log('Calculating diffs, this may take a while');
       const diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
 
-      accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
-      accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
+      if(diffs.deletes.length) {
+        deleteCounter += 1;
+        const deletes = diffs.deletes.map(t => t.nTriple);
+        await batchedUpdate(
+          deletes,
+          PUBLICATION_GRAPH,
+          'DELETE',
+          500,
+          HEALING_PATCH_GRAPH_BATCH_SIZE,
+          extraHeaders,
+          publicationEndpoint
+        );
+        //We will keep containers to attach to the task, so we have better reporting on what has been corrected
+        await createResultsContainer(task, deletes, REMOVAL_CONTAINER, `removed-triples-part-${deleteCounter}.ttl`);
+      }
 
-    }
+      if(diffs.inserts.length) {
+        insertCounter += 1;
+        const inserts = diffs.inserts.map(t => t.nTriple);
+        await batchedUpdate(
+          inserts,
+          PUBLICATION_GRAPH,
+          'INSERT',
+          500,
+          HEALING_PATCH_GRAPH_BATCH_SIZE,
+          extraHeaders,
+          publicationEndpoint
+        );
+        await createResultsContainer(task, inserts, INSERTION_CONTAINER, `inserted-triples-part-${insertCounter}.ttl`);
+      }
 
-    let extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
-    if(isInitialSync){
-      extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
-    }
-
-    let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
-    if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
-      console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
-      publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
-    }
-
-    if(accumulatedDiffs.deletes.length){
-      const deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await batchedUpdate(deletes,
-                          PUBLICATION_GRAPH,
-                          'DELETE',
-                          500,
-                          HEALING_PATCH_GRAPH_BATCH_SIZE,
-                          extraHeaders,
-                          publicationEndpoint
-                         );
-      //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-      await createResultsContainer(task, deletes, REMOVAL_CONTAINER, 'removed-triples.ttl');
-    }
-
-    if(accumulatedDiffs.inserts.length){
-      const inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await batchedUpdate(inserts,
-                          PUBLICATION_GRAPH,
-                          'INSERT',
-                          500,
-                          HEALING_PATCH_GRAPH_BATCH_SIZE,
-                          extraHeaders,
-                          publicationEndpoint
-                         );
-      await createResultsContainer(task, inserts, INSERTION_CONTAINER, 'inserted-triples.ttl');
+      if(SERVE_DELTA_FILES && !isInitialSync){
+        await publishDeltaFiles({
+          inserts: diffs.inserts.map(t => appendPublicationGraph(t.originalFormat)),
+          deletes: diffs.deletes.map(t => appendPublicationGraph(t.originalFormat))
+        });
+      }
     }
 
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
-    return {
-             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(t.originalFormat)),
-             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(t.originalFormat))
-           };
   }
   catch(e){
     console.error(e);
