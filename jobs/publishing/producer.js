@@ -505,9 +505,10 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
       ${pathToConceptSchemeString}
 
       GRAPH ?graph {
-       ?subject ?predicate ?object .
-       ${additionalFilter}
+        ?subject ?predicate ?object .
       }
+
+      ${additionalFilter}
 
       ${graphFilterBuilder()}
 
