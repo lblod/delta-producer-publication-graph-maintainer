@@ -213,13 +213,14 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
       ?subject a ${sparqlEscapeUri(type)}.
       GRAPH ?graph {
         ?subject ?predicate ?object.
-        ${additionalFilter ? additionalFilter : ''}
       }
+
+      ${additionalFilter ? additionalFilter : ''}
 
       ${pathToConceptSchemeString}
 
       ${graphsFilterStr}
-     }
+    }
   `;
 
   //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
