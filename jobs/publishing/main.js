@@ -15,6 +15,7 @@ import { appendPublicationGraph } from '../utils';
 export async function updatePublicationGraph( deltaPayload ){
   try {
     let delta = await produceDelta(deltaPayload);
+
     //To remove unncessary deltas, we filter them out.
     const actualchanges = await filterActualChangesToPublicationGraph(delta);
 
