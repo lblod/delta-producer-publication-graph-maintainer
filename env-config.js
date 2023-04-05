@@ -68,6 +68,8 @@ if(!process.env.HEALING_JOB_OPERATION)
   throw `Expected 'HEALING_JOB_OPERATION' should be provided.`;
 export const HEALING_JOB_OPERATION = process.env.HEALING_JOB_OPERATION;
 
+export const USE_FILE_DIFF = process.env.USE_FILE_DIFF == 'true' ? true : false ;
+
 /*
  * START EXPERIMENTAL FEATURES
  */

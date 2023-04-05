@@ -1,11 +1,14 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
+import * as fs from 'fs';
+import { execSync } from 'child_process';
+import * as readlines from '@lazy-node/readlines';
 import { uniq } from 'lodash';
 import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
 import {
     HEALING_PATCH_GRAPH_BATCH_SIZE,
     INSERTION_CONTAINER, MU_AUTH_ENDPOINT, MU_CALL_SCOPE_ID_INITIAL_SYNC,
     MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PUBLICATION_GRAPH, PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT, REMOVAL_CONTAINER,
-    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT
+    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_FILE_DIFF, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT
 } from '../../env-config';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
@@ -229,23 +232,91 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
   return reformatQueryResult(result);
 }
 
+function arrayToFile(array, file){
+  let fd = fs.openSync(file, "w");
+  for (let i=0; i<array.length; ++i){
+    fs.writeSync(fd, JSON.stringify(array[i]) + "\n")
+  }
+  fs.close(fd)
+  return file
+}
+function getTempFile() {
+  let file = "/tmp/healing-" + uuid();
+  return file;
+}
+function lines(filename) {
+  let retval = []
+  let rl = new readlines(filename)
+  let line
+  while ((line = rl.next())) {
+    line = line.toString()
+    if (line[0] === "<" || line[0] === ">") line = line.replace(/^./, "");
+    retval.push(JSON.parse(line) || {})
+  }
+  return retval;
+}
+function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
+  // Note: the S and T parameters can be used to tweak the memory usage of the sort command
+  const optionsNoOutput = {
+    encoding: 'utf-8',
+    stdio: ['ignore', 'ignore', 'ignore']
+  }
+
+  let sorted1 = getTempFile();
+  let sorted2 = getTempFile();
+
+  execSync(`sort ${targetFile} -S ${S} -T ${T} -o ${sorted1}`, optionsNoOutput)
+  execSync(`sort ${sourceFile} -S ${S} -T ${T} -o ${sorted2}`, optionsNoOutput)
+
+  let output1 = getTempFile();
+  let output2 = getTempFile();
+
+  execSync(`comm -23 ${sorted1} ${sorted2} | tee ${output1}`)
+  execSync(`comm -13 ${sorted1} ${sorted2} | tee ${output2}`)
+
+  let inserts = lines(output1)
+  let deletes = lines(output2)
+
+  execSync(`rm -fv ${sorted1} ${sorted2} ${output1} ${output2}`, optionsNoOutput)
+  execSync(`rm -fv ${targetFile} ${sourceFile}`)
+
+  return {
+    inserts: inserts,
+    deletes: deletes
+  }
+}
+
+
 function diffTriplesData(target, source) {
   //Note: this only works correctly if triples have same lexical notation.
   //So think about it, when copy pasting :-)
-  const diff = { inserts: [], deletes: [] };
 
-  const targetHash = target.reduce((acc, curr) => {
-    acc[curr.nTriple] = curr;
-    return acc;
-  }, {});
+  let diff = { inserts: [], deletes: [] };
+  if (target.length === 0) {
+    diff.deletes = source;
+  } else if (source.length === 0) {
+    diff.inserts = target;
+  } else if (USE_FILE_DIFF) {
+    // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
+    let targetFile = arrayToFile(target, getTempFile())
+    let sourceFile = arrayToFile(source, getTempFile())
+    diff = diffFiles(targetFile, sourceFile)
+  } else {
+    const diff = { inserts: [], deletes: [] };
 
-  const sourceHash = source.reduce((acc, curr) => {
-    acc[curr.nTriple] = curr;
-    return acc;
-  }, {});
+    const targetHash = target.reduce((acc, curr) => {
+      acc[curr.nTriple] = curr;
+      return acc;
+    }, {});
 
-  diff.inserts = target.filter(nt => !sourceHash[nt.nTriple]);
-  diff.deletes = source.filter(nt => !targetHash[nt.nTriple]);
+    const sourceHash = source.reduce((acc, curr) => {
+      acc[curr.nTriple] = curr;
+      return acc;
+    }, {});
+
+    diff.inserts = target.filter(nt => !sourceHash[nt.nTriple]);
+    diff.deletes = source.filter(nt => !targetHash[nt.nTriple]);
+  }
 
   return diff;
 }
