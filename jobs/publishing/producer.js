@@ -9,7 +9,6 @@ import {
   isSamePath,
   loadConfiguration
 } from '../../lib/utils';
-import { LOG_DELTA_REWRITE, PUBLICATION_GRAPH } from '../../env-config';
 
 const EXPORT_CONFIG = loadConfiguration();
 
@@ -19,7 +18,7 @@ const EXPORT_CONFIG = loadConfiguration();
 /**
  * Rewriting the incoming delta message to a delta message relevant for the conceptScheme export
  */
-export async function produceDelta(delta) {
+export async function produceDelta(_config, delta) {
   const updatedDeltas = [];
 
   for (let changeSet of delta) {
@@ -27,14 +26,14 @@ export async function produceDelta(delta) {
 
     const typeCache = await buildTypeCache(changeSet);
 
-    if (LOG_DELTA_REWRITE)
+    if (_config.LOG_DELTA_REWRITE)
       console.log(`Rewriting inserted changeSet containing ${changeSet.inserts.length} triples`);
-    const inserts = await rewriteInsertedChangeset(changeSet.inserts, typeCache);
+    const inserts = await rewriteInsertedChangeset(_config, changeSet.inserts, typeCache);
     updatedChangeSet.inserts.push(...inserts);
 
-    if (LOG_DELTA_REWRITE)
+    if (_config.LOG_DELTA_REWRITE)
       console.log(`Rewriting deleted changeSet containing ${changeSet.deletes.length} triples`);
-    const deletes = await rewriteDeletedChangeset(changeSet.deletes, typeCache);
+    const deletes = await rewriteDeletedChangeset(_config, changeSet.deletes, typeCache);
     updatedChangeSet.deletes.push(...deletes);
 
     if (updatedChangeSet.inserts.length || updatedChangeSet.deletes.length)
@@ -65,17 +64,18 @@ export async function produceDelta(delta) {
  * Building the cache is purely based on rdf:type and does not take the path from
  * a resource to the export concept scheme into account.
  *
+ * @param _config the configuration to be used
  * @param object changeSet Delta changeset including `inserts` and `deletes`
  * @return Array Array of objects like { uri, config }
  */
-async function buildTypeCache(changeSet) {
+async function buildTypeCache(_config, changeSet) {
   const cache = [];
 
   const triples = [...changeSet.inserts, ...changeSet.deletes];
   const subjects = triples.map(t => t.subject.value);
   const objects = triples.filter(t => t.object.type == 'uri').map(t => t.object.value);
   const uris = uniq([...subjects, ...objects]);
-  if (LOG_DELTA_REWRITE)
+  if (_config.LOG_DELTA_REWRITE)
     console.log(`Building type cache for ${uris.length} URIs based on types found in the store and the changeset.`);
 
   for (let uri of uris) {
@@ -91,19 +91,19 @@ async function buildTypeCache(changeSet) {
         t => t.subject.value == uri && t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
                                       .map(t => t.object.value);
     const types = uniq([...typesFromStore, ...typesFromChangeset]);
-    if (LOG_DELTA_REWRITE)
+    if (_config.LOG_DELTA_REWRITE)
       console.log(`Found ${types.length} distinct types for URI <${uri}>.`);
 
     for (let type of types) {
       const typeConfigs = EXPORT_CONFIG.export.filter(t => t.type == type);
       if (typeConfigs.length) {
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(`rdf:type <${type}> configured for export.`);
         const cacheEntries = typeConfigs.map(config => {
           return {uri, config};
         });
         cache.push(...cacheEntries);
-      } else if (LOG_DELTA_REWRITE) {
+      } else if (_config.LOG_DELTA_REWRITE) {
         console.log(`rdf:type <${type}> is not configured for export and will be ignored.`);
       }
     }
@@ -130,7 +130,7 @@ async function buildTypeCache(changeSet) {
  * based on the predicate and the export configuration.
  * This enrichment is checked recursively for any newly added relation triple as well.
  */
-async function rewriteInsertedChangeset(changeSet, typeCache) {
+async function rewriteInsertedChangeset(_config, changeSet, typeCache) {
   const triplesToInsert = [];
   const processedResources = []; // tmp cache of recursively added resources
 
@@ -147,31 +147,31 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
           // different configuration could contain different predicates
           if (config.additionalFilter) {
             processedResources.push(uri);
-            if (LOG_DELTA_REWRITE)
+            if (_config.LOG_DELTA_REWRITE)
               console.log(`Additional Filters found, enriching insert changeset with export of resource <${uri}>.`);
-            const resourceExport = await exportResource(uri, config);
+            const resourceExport = await exportResource(_config, uri, config);
             triplesToInsert.push(...resourceExport);
           } else if (isConfiguredForExport(triple, config)) {
-            if (LOG_DELTA_REWRITE)
+            if (_config.LOG_DELTA_REWRITE)
               console.log(`Triple ${serializeTriple(triple)} copied to insert changeset for export.`);
             triplesToInsert.push(triple);
           } else {
-            if (LOG_DELTA_REWRITE)
+            if (_config.LOG_DELTA_REWRITE)
               console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
           }
         } else {
-          if (LOG_DELTA_REWRITE)
+          if (_config.LOG_DELTA_REWRITE)
             console.log(`No path to export concept scheme found for subject <${uri}>.`);
         }
       }
-    } else if (LOG_DELTA_REWRITE) {
+    } else if (_config.LOG_DELTA_REWRITE) {
       console.log(
           `Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
   }
 
-  const enrichments = await enrichInsertedChangeset(triplesToInsert, typeCache, processedResources);
-  if (LOG_DELTA_REWRITE) {
+  const enrichments = await enrichInsertedChangeset(_config, triplesToInsert, typeCache, processedResources);
+  if (_config.LOG_DELTA_REWRITE) {
     console.log(`Checked ${processedResources.length} additional resources to insert.`);
     console.log(`Adding ${enrichments.length} triples to insert to the changeset.`);
   }
@@ -191,8 +191,8 @@ async function rewriteInsertedChangeset(changeSet, typeCache) {
  * Eg. addition of the person in the previous example may cause the insertion
  * of the person's birthdate as well.
  */
-async function enrichInsertedChangeset(changeSet, typeCache, processedResources) {
-  const impactedResources = getImpactedResources(changeSet, typeCache);
+async function enrichInsertedChangeset(_config, changeSet, typeCache, processedResources) {
+  const impactedResources = getImpactedResources(_config, changeSet, typeCache);
 
   const triplesToInsert = [];
   for (let {uri, config} of impactedResources) {
@@ -200,22 +200,22 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
       processedResources.push(uri); // make sure to handle each resource only once
       const isInScope = await isInScopeOfConfiguration(uri, config);
       if (isInScope) {
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(`Enriching insert changeset with export of resource <${uri}>.`);
-        const resourceExport = await exportResource(uri, config);
+        const resourceExport = await exportResource(_config, uri, config);
         triplesToInsert.push(...resourceExport);
 
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(
               `Recursively checking for enrichments based on the newly inserted triples for resource <${uri}>.`);
-        const recursiveTypeCache = await buildTypeCache({inserts: resourceExport, deletes: []});
-        const recursiveTriples = await enrichInsertedChangeset(resourceExport, recursiveTypeCache, processedResources);
+        const recursiveTypeCache = await buildTypeCache(config, {inserts: resourceExport, deletes: []});
+        const recursiveTriples = await enrichInsertedChangeset(config, resourceExport, recursiveTypeCache, processedResources);
         triplesToInsert.push(...recursiveTriples);
-      } else if (LOG_DELTA_REWRITE) {
+      } else if (_config.LOG_DELTA_REWRITE) {
         console.log(`Resource <${uri}> doesn't have a path to the export concept scheme. Ignoring this resource.`);
       }
     } else {
-      if (LOG_DELTA_REWRITE)
+      if (_config.LOG_DELTA_REWRITE)
         console.log(`Resource <${uri}> already added to export for given config. Ignoring now.`);
     }
   }
@@ -236,7 +236,7 @@ async function enrichInsertedChangeset(changeSet, typeCache, processedResources)
  * in the store. Other triples that need to be deleted, that are not in the store anymore,
  * will arrive in (different) delta changesets.
  */
-async function rewriteDeletedChangeset(changeSet, typeCache) {
+async function rewriteDeletedChangeset(_config, changeSet, typeCache) {
   const triplesToDelete = [];
   const processedResources = []; // tmp cache of recursively added resources
 
@@ -254,29 +254,29 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
         // different configuration could contain different predicates
         if (isOutOfScope) {
           processedResources.push(uri);
-          if (LOG_DELTA_REWRITE)
+          if (_config.LOG_DELTA_REWRITE)
             console.log(`Additional Filters found, enriching delete changeset with export of resource <${uri}>.`);
           // If the resource is out-of-scope/to-be-deleted, we need to get the full resource from the publication graph.
-          const resourceExport = await exportResource(uri, config, publicationGraphFilter);
+          const resourceExport = await exportResource(_config, uri, config, () => publicationGraphFilter(_config));
           triplesToDelete.push(...resourceExport);
         } else if (isConfiguredForExport(triple, config)) {
-          if (LOG_DELTA_REWRITE)
+          if (_config.LOG_DELTA_REWRITE)
             console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
           triplesToDelete.push(triple);
-        } else if (LOG_DELTA_REWRITE) {
+        } else if (config.LOG_DELTA_REWRITE) {
           console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
         }
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
       }
-    } else if (LOG_DELTA_REWRITE) {
+    } else if (_config.LOG_DELTA_REWRITE) {
       console.log(
           `Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
   }
 
-  const enrichments = await enrichDeletedChangeset(changeSet, typeCache, processedResources);
-  if (LOG_DELTA_REWRITE) {
+  const enrichments = await enrichDeletedChangeset(_config, changeSet, typeCache, processedResources);
+  if (_config.LOG_DELTA_REWRITE) {
     console.log(`Checked ${processedResources.length} additional resources to delete.`);
     console.log(`Adding ${enrichments.length} triples to delete to the changeset.`);
   }
@@ -296,8 +296,8 @@ async function rewriteDeletedChangeset(changeSet, typeCache) {
  * Eg. deletion of the person in the previous example may cause the deletion
  * of the person's birthdate as well.
  */
-async function enrichDeletedChangeset(changeSet, typeCache, processedResources) {
-  const impactedResources = getImpactedResources(changeSet, typeCache);
+async function enrichDeletedChangeset(_config, changeSet, typeCache, processedResources) {
+  const impactedResources = getImpactedResources(_config, changeSet, typeCache);
 
   const triplesToDelete = [];
   for (let {uri, config} of impactedResources) {
@@ -305,19 +305,19 @@ async function enrichDeletedChangeset(changeSet, typeCache, processedResources) 
       processedResources.push(uri); // make sure to handle each resource only once
       const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
       if (isOutOfScope) {
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(`Enriching delete changeset with export of resource <${uri}>.`);
-        const resourceExport = await exportResource(uri, config);
+        const resourceExport = await exportResource(_config, uri, config);
         triplesToDelete.push(...resourceExport);
 
-        if (LOG_DELTA_REWRITE)
+        if (_config.LOG_DELTA_REWRITE)
           console.log(`Recursively checking for enrichments based on the newly deleted triples for resource <${uri}>.`);
         const recursiveTypeCache = await buildTypeCache({inserts: [], deletes: resourceExport});
-        const recursiveTriples = await enrichDeletedChangeset(resourceExport, recursiveTypeCache, processedResources);
+        const recursiveTriples = await enrichDeletedChangeset(config, resourceExport, recursiveTypeCache, processedResources);
         triplesToDelete.push(...recursiveTriples);
       }
     } else {
-      if (LOG_DELTA_REWRITE)
+      if (_config.LOG_DELTA_REWRITE)
         console.log(`Resource <${uri}> already removed from export for given config. Ignoring now.`);
     }
   }
@@ -338,11 +338,11 @@ async function enrichDeletedChangeset(changeSet, typeCache, processedResources) 
  * (ir)relevant for the export (ie. it has/doesn't have a path to the export concept scheme)
  * is validated in the enrichInserted/DeletedChangeset functions.
  */
-function getImpactedResources(changeSet, typeCache) {
+function getImpactedResources(_config, changeSet, typeCache) {
   const resources = [];
 
   const relations = changeSet.filter(t => t.object.type == 'uri');
-  if (LOG_DELTA_REWRITE)
+  if (_config.LOG_DELTA_REWRITE)
     console.log(
         `Found ${relations.length} triples in the changeset that are relations to other resources. They may possibly impact the export.`);
 
@@ -353,13 +353,13 @@ function getImpactedResources(changeSet, typeCache) {
     // the full mandatee-x resource needs to be inserted (similar for delete)
     const subject = triple.subject.value;
     const exportConfigurations = typeCache.filter(e => e.uri == subject).map(e => e.config);
-    if (LOG_DELTA_REWRITE)
+    if (_config.LOG_DELTA_REWRITE)
       console.log(`Subject ${subject} has ${exportConfigurations.length} export configurations.`);
 
     const subjectExports = exportConfigurations.filter(
         config => config.pathToConceptScheme[0] == triple.predicate.value);
     for (let config of subjectExports) {
-      if (LOG_DELTA_REWRITE)
+      if (_config.LOG_DELTA_REWRITE)
         console.log(
             `Relation triple with subject <${subject}> with type <${config.type}> and predicate <${triple.predicate.value}> may have an impact on the export.`);
       resources.push({uri: subject, config: config});
@@ -371,7 +371,7 @@ function getImpactedResources(changeSet, typeCache) {
     // the full person-x resource needs to be inserted (similar for delete)
     const object = triple.object.value;
     const objectTypes = uniq(typeCache.filter(e => e.uri == object).map(e => e.config.type));
-    if (LOG_DELTA_REWRITE)
+    if (_config.LOG_DELTA_REWRITE)
       console.log(`Object ${object} has ${objectTypes.length} types in the cache.`);
 
     if (objectTypes.length) {
@@ -380,7 +380,7 @@ function getImpactedResources(changeSet, typeCache) {
             .filter(config => objectTypes.includes(config.type) && config.pathToConceptScheme[0] ==
                 `^${triple.predicate.value}`);
         for (let deeperConfig of deeperConfigurations) {
-          if (LOG_DELTA_REWRITE)
+          if (_config.LOG_DELTA_REWRITE)
             console.log(
                 `Relation triple with object <${object}> with type <${deeperConfig.type}> and predicate <${triple.predicate.value}> may have an impact on the export.`);
           resources.push({uri: object, config: deeperConfig});
@@ -389,7 +389,7 @@ function getImpactedResources(changeSet, typeCache) {
     }
   }
 
-  if (LOG_DELTA_REWRITE)
+  if (_config.LOG_DELTA_REWRITE)
     console.log(
         `Found ${resources.length} triple that may cause the insertion/deletion of additional resources in the export.`);
 
@@ -400,7 +400,7 @@ function getImpactedResources(changeSet, typeCache) {
  * Construct the triples to be exported (inserted/deleted) for a given subject URI
  * based on the export configuration and the triples in the triplestore
  */
-async function exportResource(uri, config, graphFilterBuilder = () => configGraphFilter(config)) {
+async function exportResource(_config, uri, config, graphFilterBuilder = () => configGraphFilter(_config, config)) {
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
@@ -519,10 +519,10 @@ async function isInScopeOfConfiguration(subject, config, graphFilterBuilder = ()
   return result.results.bindings.length;
 }
 
-function configGraphFilter(config) {
-  // Either we want the triple to resided in a specific (set) of graphs,
+function configGraphFilter(_config, config) {
+  // Either we want the triple to reside in a specific (set) of graphs,
   // or not (exclusively) in the publication graph.
-  let filter = `FILTER(?graph NOT IN (${sparqlEscapeUri(PUBLICATION_GRAPH)}))`;
+  let filter = `FILTER(?graph NOT IN (${sparqlEscapeUri(_config.PUBLICATION_GRAPH)}))`;
 
   if (config.graphsFilter.length) {
 
@@ -537,8 +537,8 @@ function configGraphFilter(config) {
   return filter;
 }
 
-function publicationGraphFilter() {
-  return `FILTER ( regex(str(?graph), ${sparqlEscapeString(PUBLICATION_GRAPH)}) )`;
+function publicationGraphFilter(_config) {
+  return `FILTER ( regex(str(?graph), ${sparqlEscapeString(_config.PUBLICATION_GRAPH)}) )`;
 }
 
 function isConfiguredForExport(triple, config) {

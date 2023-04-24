@@ -1,9 +1,9 @@
 # delta-producer-publication-graph-maintainer
 
-Producer service resposible for:
+Producer service responsible for:
   - maintaining the publication graph which acts as a source of truth for the delta diff files generation
-  - excuting the preriodic healing of the publication graph
-  - excuting the initial sync of the publication graph
+  - executing the periodic healing of the publication graph
+  - executing the initial sync of the publication graph
 
 ## Tutorials
 
@@ -51,7 +51,7 @@ export default [
 ### configuration file
 
 ## simple mode
-By example:
+For example:
 
 ```
 {
@@ -74,7 +74,7 @@ By example:
   ]
 }
 ```
-The simple mode publishes evereything that matches the pattern above. Hence you might expose too much data or even not enough, please refer to `concept scheme filtering` for more complex scenarios.
+The simple mode publishes everything that matches the pattern above. Hence you might expose too much data or even not enough, please refer to `concept scheme filtering` for more complex scenarios.
 
 ### concept scheme filtering
 Here, the logic to consider what is a viable logical block to produce for consumer is based on a concept scheme filtering.
@@ -158,7 +158,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
 
 The `export` array may contain multiple entries for an `rdf:type`.
-A resource may have multiple types and therefore map to multiple export configugrations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
+A resource may have multiple types and therefore map to multiple export configurations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
 
 #### Environment variables
 The following enviroment variables can be optionally configured:
@@ -168,7 +168,7 @@ The following enviroment variables can be optionally configured:
 * `PUBLISHER_URI (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
 * `JOBS_GRAPH (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
 * `PUBLICATION_GRAPH (required)`: URI of the publication graph to maintain
-* `INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
+* `INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION (required)`: URI of the job operation for initial syncing to listen to.
 * `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
 *  `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
 *  `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default.
@@ -185,7 +185,7 @@ Endpoint that receives delta's from the [delta-notifier](https://github.com/mu-s
 
 ## Discussions
 ### What is a publication graph anyway?
-The publication graph acts as an interemediate step in the delta (file) generation process. This graph represents the state of the data that should be consumed by a consumer. The serialization of the updates, i.e. how we inform or publish additions or removals to the graph, is left to other services.
+The publication graph acts as an intermediate step in the delta (file) generation process. This graph represents the state of the data that should be consumed by a consumer. The serialization of the updates, i.e. how we inform or publish additions or removals to the graph, is left to other services.
 
 ### Why must the generated delta's of the application stack be rewritten by the producer?
 Simply writing all incoming delta messages to a file if the subject's `rdf:type` is of interest and offering those files to a consumer service may look as a simple and adequate solution at first sight, but it isn't. This simple approach has two downsides:
@@ -196,7 +196,7 @@ To determine which resources are relevant to export, the producer makes use of a
 
 The path to follow from the resource URI to the concept scheme is specified in the export configuration per resource type.
 
-This approach may lead to duplicate inserts of data (eg. relating a mandate to a bestuursorgaan will produce triples to insert every mandatee, person, person's birthdate, etc. related to the mandate, while some of this data may have been synced before), but it will never expose irrelevant data or sync too little data.
+This approach may lead to duplicate inserts of data (eg. relating a mandate to a disorganises will produce triples to insert every mandate, person, person's birthdate, etc. related to the mandate, while some of this data may have been synced before), but it will never expose irrelevant data or sync too little data.
 
 ## Known limitations
 ### additionalFilter
@@ -229,7 +229,7 @@ By configuring the following environment variables:
 ```
 the service can maintain the publication graph residing in another database.
 ### SERVE_DELTA_FILES
-By setting this to "true", this service creates and host delta-files. In essence it takes over the role of [delta-producer-json-diff-file-publisher](https://github.com/lblod/delta-producer-json-diff-file-publisher).
+By setting this to "true", this service creates and host delta-files. In essence, it takes over the role of [delta-producer-json-diff-file-publisher](https://github.com/lblod/delta-producer-json-diff-file-publisher).
 The motivation of merge this functionality back here:
   - Occam's razor applied applied on services for sane defaults: in many cases, the format of the published files will be the same as what is generated with `delta-producer-json-diff-file-publisher`.
     Hence, it was considered in practice cumbersome to instantiate another service for this.
@@ -237,10 +237,10 @@ The motivation of merge this functionality back here:
   - Increased robustness in the publication process.
     Since the serialization is not dependent on delta's, chances are reduced the published files and the publication graph get out of sync.
 
-It might be this feature gets extended, i.e. more serialization formats, or completly removed. Practice will tell.
+It might be this feature gets extended, i.e. more serialization formats, or completely removed. Practice will tell.
 
 ### Login + ACL
-Published data may be wrapped up in an authorization layer, i.e. the delta files will only availble to agents with access.
+Published data may be wrapped up in an authorization layer, i.e. the delta files will only available to agents with access.
 It relies on mu-auth to follow the authorization scheme.
 The following configuration needs to be added. Suppose the deltas to share are about 'persons-sensitive'.
 #### docker-compose.yml
