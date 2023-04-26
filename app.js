@@ -16,9 +16,13 @@ app.use( bodyParser.json({
   limit: '500mb'
 }));
 
-{
-  const _config = new Config();
-  const _export_config = loadConfiguration('/config/export.json');
+let services = require('/config/services.json');
+
+console.log("Services config is: ", services)
+for (const name in services){
+  let service = services[name]
+  const _config = new Config(service);
+  const _export_config = loadConfiguration(_config.EXPORT_CONFIG_PATH);
 
   const producerQueue = new ProcessingQueue(_config);
 
@@ -96,12 +100,13 @@ app.use( bodyParser.json({
     }
   }
 
+  if (_config.SERVE_DELTA_FILES) {
 //This endpoint only makes sense if SERVE_DELTA_FILES is set to true;
-  app.get(_config.FILES_PATH, async function (req, res) {
-    const files = await getDeltaFiles(_config, req.query.since);
-    res.json({data: files});
-  });
-
+    app.get(_config.FILES_PATH, async function (req, res) {
+      const files = await getDeltaFiles(_config, req.query.since);
+      res.json({data: files});
+    });
+  }
 // This endpoint can be used by the consumer to get a session
 // This is useful if the data in the files is confidential
 // Note that you will need to configure mu-auth so it can make sense out of it

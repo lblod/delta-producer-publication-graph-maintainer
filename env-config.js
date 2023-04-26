@@ -1,8 +1,9 @@
 export class Config {
-    constructor() {
+    constructor(configData) {
+        this.EXPORT_CONFIG_PATH = configData.EXPORT_CONFIG_PATH;
         this.LOG_INCOMING_DELTA = process.env.LOG_INCOMING_DELTA || false;
         this.LOG_DELTA_REWRITE = process.env.LOG_DELTA_REWRITE || false;
-        this.PUBLISHER_URI = process.env.PUBLISHER_URI || 'http://data.lblod.info/services/loket-producer';
+        this.PUBLISHER_URI = configData.PUBLISHER_URI || 'http://data.lblod.info/services/loket-producer';
         this.PREFIXES = `
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
@@ -17,7 +18,7 @@ export class Config {
   PREFIX dbpedia: <http://dbpedia.org/resource/>
 `;
         this.ERROR_URI_PREFIX = 'http://redpencil.data.gift/id/publication-maintenance/error/';
-        this.JOBS_GRAPH = process.env.JOBS_GRAPH || 'http://mu.semte.ch/graphs/system/jobs';
+        this.JOBS_GRAPH = configData.JOBS_GRAPH || 'http://mu.semte.ch/graphs/system/jobs';
         this.JOB_TYPE = 'http://vocab.deri.ie/cogs#Job';
         this.TASK_TYPE = 'http://redpencil.data.gift/vocabularies/tasks/Task';
         this.STATUS_BUSY = 'http://redpencil.data.gift/id/concept/JobStatus/busy';
@@ -27,7 +28,7 @@ export class Config {
         this.STATUS_CANCELED = 'http://redpencil.data.gift/id/concept/JobStatus/canceled';
         this.ERROR_TYPE = 'http://open-services.net/ns/core#Error';
         this.DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
-        this.ERROR_CREATOR_URI = process.env.ERROR_CREATOR_URI || 'http://lblod.data.gift/services/delta-producer-publication-graph-maintainer';
+        this.ERROR_CREATOR_URI = configData.ERROR_CREATOR_URI || 'http://lblod.data.gift/services/delta-producer-publication-graph-maintainer';
 
         //task operation of interest
         this.HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION = 'http://redpencil.data.gift/id/jobs/concept/TaskOperation/deltas/healing/patchPublicationGraph';
@@ -37,40 +38,40 @@ export class Config {
         this.REMOVAL_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/RemovalContainer';
         this.INSERTION_CONTAINER = 'http://redpencil.data.gift/id/concept/HealingProcess/InsertionContainer';
 
-        this.REPORTING_FILES_GRAPH = process.env.REPORTING_FILES_GRAPH;
-        this.QUEUE_POLL_INTERVAL = process.env.QUEUE_POLL_INTERVAL || 60000;
+        this.REPORTING_FILES_GRAPH = configData.REPORTING_FILES_GRAPH;
+        this.QUEUE_POLL_INTERVAL = configData.QUEUE_POLL_INTERVAL || 60000;
 
-        this.HEALING_PATCH_GRAPH_BATCH_SIZE = parseInt(process.env.HEALING_PATCH_GRAPH_BATCH_SIZE || 100);
-        this.UPDATE_PUBLICATION_GRAPH_SLEEP = parseInt(process.env.UPDATE_PUBLICATION_GRAPH_SLEEP || 1000);
-        this.SKIP_MU_AUTH_DELTA_FOLDING = process.env.SKIP_MU_AUTH_DELTA_FOLDING == 'true' ? true : false;
+        this.HEALING_PATCH_GRAPH_BATCH_SIZE = parseInt(configData.HEALING_PATCH_GRAPH_BATCH_SIZE || 100);
+        this.UPDATE_PUBLICATION_GRAPH_SLEEP = parseInt(configData.UPDATE_PUBLICATION_GRAPH_SLEEP || 1000);
+        this.SKIP_MU_AUTH_DELTA_FOLDING = configData.SKIP_MU_AUTH_DELTA_FOLDING == 'true' ? true : false;
 
-        this.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = process.env.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
+        this.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE = configData.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE
             || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
 
-        this.MU_CALL_SCOPE_ID_INITIAL_SYNC = process.env.MU_CALL_SCOPE_ID_INITIAL_SYNC
+        this.MU_CALL_SCOPE_ID_INITIAL_SYNC = configData.MU_CALL_SCOPE_ID_INITIAL_SYNC
             || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
         //mainly for debugging purposes
-        this.WAIT_FOR_INITIAL_SYNC = process.env.WAIT_FOR_INITIAL_SYNC == 'false' ? false : true;
+        this.WAIT_FOR_INITIAL_SYNC = configData.WAIT_FOR_INITIAL_SYNC == 'false' ? false : true;
 
-        if (!process.env.PUBLICATION_GRAPH)
+        if (!configData.PUBLICATION_GRAPH)
             throw `Expected 'PUBLICATION_GRAPH' should be provided.`;
-        this.PUBLICATION_GRAPH = process.env.PUBLICATION_GRAPH;
+        this.PUBLICATION_GRAPH = configData.PUBLICATION_GRAPH;
 
-        if (!process.env.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION)
+        if (!configData.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION)
             throw `Expected 'INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION' should be provided.`;
-        this.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION = process.env.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION;
+        this.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION = configData.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION;
 
-        if (!process.env.HEALING_JOB_OPERATION)
+        if (!configData.HEALING_JOB_OPERATION)
             throw `Expected 'HEALING_JOB_OPERATION' should be provided.`;
-        this.HEALING_JOB_OPERATION = process.env.HEALING_JOB_OPERATION;
+        this.HEALING_JOB_OPERATION = configData.HEALING_JOB_OPERATION;
 
         /*
          * START EXPERIMENTAL FEATURES
          */
         //SKIP MU_AUTH
-        this.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = process.env.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS == 'true' ? true : false;
-        this.SKIP_MU_AUTH_INITIAL_SYNC = process.env.SKIP_MU_AUTH_INITIAL_SYNC == 'true' ? true : false;
+        this.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS = configData.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS === 'true';
+        this.SKIP_MU_AUTH_INITIAL_SYNC = configData.SKIP_MU_AUTH_INITIAL_SYNC === 'true';
         this.VIRTUOSO_ENDPOINT = process.VIRTUOSO_ENDPOINT || 'http://virtuoso:8890/sparql';
         this.MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:8890/sparql';
 
@@ -79,13 +80,13 @@ export class Config {
         this.PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDPOINT || this.MU_AUTH_ENDPOINT;
 
         //FILES PUBLISHER
-        this.SERVE_DELTA_FILES = process.env.SERVE_DELTA_FILES || false;
-        this.LOG_OUTGOING_DELTA = process.env.LOG_OUTGOING_DELTA || false;
-        this.DELTA_INTERVAL = process.env.DELTA_INTERVAL_MS || 1000;
-        this.PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON == 'true';
-        this.ERROR_GRAPH = process.env.ERROR_GRAPH || 'http://mu.semte.ch/graphs/system/errors';
-        this.RELATIVE_FILE_PATH = process.env.RELATIVE_FILE_PATH || 'deltas';
-        this.FILES_GRAPH = process.env.FILES_GRAPH || 'http://mu.semte.ch/graphs/public';
+        this.SERVE_DELTA_FILES = configData.SERVE_DELTA_FILES || false;
+        this.LOG_OUTGOING_DELTA = configData.LOG_OUTGOING_DELTA || false;
+        this.DELTA_INTERVAL = configData.DELTA_INTERVAL_MS || 1000;
+        this.PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
+        this.ERROR_GRAPH = configData.ERROR_GRAPH || 'http://mu.semte.ch/graphs/system/errors';
+        this.RELATIVE_FILE_PATH = configData.RELATIVE_FILE_PATH || 'deltas';
+        this.FILES_GRAPH = configData.FILES_GRAPH || 'http://mu.semte.ch/graphs/public';
 
         this.CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
         this.CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
@@ -99,11 +100,17 @@ export class Config {
          * END EXPERIMENTAL FEATURES
          */
 
-         /*
-          * PATHS
-          */
-        this.DELTA_PATH = '/delta';
-        this.FILES_PATH = '/files';
-        this.LOGIN_PATH = '/login';
+        /*
+         * PATHS
+         */
+        if (!configData.DELTA_PATH)
+            throw `Expected 'DELTA_PATH' should be provided.`;
+        this.DELTA_PATH = configData.DELTA_PATH;
+        if (!configData.FILES_PATH)
+            throw `Expected 'FILES_PATH' should be provided.`;
+        this.FILES_PATH = configData.FILES_PATH;
+        if (!configData.LOGIN_PATH)
+            throw `Expected 'LOGIN_PATH' should be provided.`;
+        this.LOGIN_PATH = configData.LOGIN_PATH;
     }
 }
