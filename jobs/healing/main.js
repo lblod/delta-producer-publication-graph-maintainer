@@ -5,7 +5,7 @@ import { appendTaskError, loadTask, updateTaskStatus } from '../../lib/task';
 import { parseResult, storeError } from '../../lib/utils';
 import { runHealingTask } from './pipeline-healing';
 
-export async function executeHealingTask(_config){
+export async function executeHealingTask(_config, _export_config) {
 
   try {
     //TODO: extra checks are required to make sure the system remains in consistent state
@@ -20,7 +20,7 @@ export async function executeHealingTask(_config){
       const task = await loadTask(_config, syncTaskUri || healingTaskUri);
       try {
         await updateTaskStatus(task, _config.STATUS_BUSY);
-        delta = await runHealingTask(_config, task, syncTaskUri ? true : false);
+        delta = await runHealingTask(_config, _export_config, task, syncTaskUri ? true : false);
         if(_config.SERVE_DELTA_FILES && healingTaskUri){
           await publishDeltaFiles(_config, delta);
         }

@@ -3,20 +3,18 @@ import { uniq } from 'lodash';
 import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
-import { batchedUpdate, loadConfiguration, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
+import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
 import { appendPublicationGraph } from '../utils';
 
 
-const EXPORT_CONFIG = loadConfiguration();
-
-export async function runHealingTask(_config, task, isInitialSync) {
+export async function runHealingTask(_config, _export_config, task, isInitialSync) {
   try {
-    const conceptSchemeUri = EXPORT_CONFIG.conceptScheme;
+    const conceptSchemeUri = _export_config.conceptScheme;
     const started = new Date();
 
     console.log(`starting at ${started}`);
 
-    const propertyMap = groupPathToConceptSchemePerProperty(EXPORT_CONFIG.export);
+    const propertyMap = groupPathToConceptSchemePerProperty(_export_config.export);
 
     let accumulatedDiffs = { inserts: [], deletes: [] };
 
@@ -24,7 +22,7 @@ export async function runHealingTask(_config, task, isInitialSync) {
     // The triples to push to the publication graph should be equal to
     // - all triples whose ?s link to the concept scheme (through pathToConceptScheme)
     //   (note if no path defined, then this condition returns true) AND
-    // - whose ?p match the properties defined in the EXPORT_CONFIG AND
+    // - whose ?p match the properties defined in the _export_config AND
     // - who match any of the configured types AND
     // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predefined graphs)
     //
@@ -36,7 +34,7 @@ export async function runHealingTask(_config, task, isInitialSync) {
     // The additions are A\B, and removals are B\A
     for(const property of Object.keys(propertyMap)){
 
-      const sourceTriples = await getSourceTriples(_config, property, propertyMap, conceptSchemeUri);
+      const sourceTriples = await getSourceTriples(_config, _export_config, property, propertyMap, conceptSchemeUri);
       const publicationGraphTriples = await getPublicationTriples(_config, property, _config.PUBLICATION_GRAPH);
 
       console.log('Calculating diffs, this may take a while');
@@ -127,7 +125,7 @@ async function createResultsContainer( _config, task, nTriples, subject, fileNam
 /*
  * Gets the triples for a property, which are considered 'Ground Truth'
  */
-async function getSourceTriples( _config, property, propertyMap, conceptSchemeUri ){
+async function getSourceTriples( _config, _export_config, property, propertyMap, conceptSchemeUri ){
   let sourceTriples = [];
   for(const config of propertyMap[property]){
     const scopedSourceTriples = await getScopedSourceTriples(_config,
@@ -135,7 +133,7 @@ async function getSourceTriples( _config, property, propertyMap, conceptSchemeUr
                                                              property,
                                                              conceptSchemeUri,
                                                              _config.PUBLICATION_GRAPH,
-                                                             EXPORT_CONFIG);
+                                                             _export_config);
 
     const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
     sourceTriples = [ ...sourceTriples, ...diffs.inserts ];

@@ -8,9 +8,9 @@ import { appendPublicationGraph } from '../utils';
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
-export async function updatePublicationGraph( _config, deltaPayload ){
+export async function updatePublicationGraph( _config, _export_config, deltaPayload ){
   try {
-    let delta = await produceDelta(_config, deltaPayload);
+    let delta = await produceDelta(_config, _export_config, deltaPayload);
     //To remove unnecessary deltas, we filter them out.
     const actualchanges = await filterActualChangesToPublicationGraph(_config, delta);
 

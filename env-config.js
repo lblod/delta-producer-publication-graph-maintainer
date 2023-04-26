@@ -98,5 +98,12 @@ export class Config {
         /*
          * END EXPERIMENTAL FEATURES
          */
+
+         /*
+          * PATHS
+          */
+        this.DELTA_PATH = '/delta';
+        this.FILES_PATH = '/files';
+        this.LOGIN_PATH = '/login';
     }
 }
