@@ -3,12 +3,12 @@
   "version": "0.15.2",
   "description": "Microservice to maintain the publication graph during delta production process",
   "dependencies": {
+    "@lazy-node/readlines": "^3.0.2",
     "@lblod/mu-auth-sudo": "https://github.com/lblod/mu-auth-sudo.git#b2d957bc83882db60efa131621840c0d8e92b242",
     "fs-extra": "^8.0.1",
     "lodash": "^4.17.11",
-    "@lazy-node/readlines": "^3.0.2"
+    "tmp": "^0.2.1"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

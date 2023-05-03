@@ -1,5 +1,6 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import * as fs from 'fs';
+import * as tmp from 'tmp';
 import { execSync } from 'child_process';
 import * as readlines from '@lazy-node/readlines';
 import { uniq } from 'lodash';
@@ -233,25 +234,20 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
 }
 
 function arrayToFile(array, file){
-  let fd = fs.openSync(file, "w");
+  let fd = file.fd;
   for (let i=0; i<array.length; ++i){
     fs.writeSync(fd, JSON.stringify(array[i]) + "\n")
   }
-  fs.close(fd)
   return file
 }
-function getTempFile() {
-  let file = "/tmp/healing-" + uuid();
-  return file;
-}
+// read the file and parse each line to an Object, the opposite of the above function
 function lines(filename) {
   let retval = []
   let rl = new readlines(filename)
   let line
   while ((line = rl.next())) {
     line = line.toString()
-    if (line[0] === "<" || line[0] === ">") line = line.replace(/^./, "");
-    retval.push(JSON.parse(line) || {})
+    retval.push(JSON.parse(line))
   }
   return retval;
 }
@@ -262,23 +258,25 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
     stdio: ['ignore', 'ignore', 'ignore']
   }
 
-  let sorted1 = getTempFile();
-  let sorted2 = getTempFile();
+  let sorted1 = tmp.fileSync();
+  let sorted2 = tmp.fileSync();
 
-  execSync(`sort ${targetFile} -S ${S} -T ${T} -o ${sorted1}`, optionsNoOutput)
-  execSync(`sort ${sourceFile} -S ${S} -T ${T} -o ${sorted2}`, optionsNoOutput)
+  execSync(`sort ${targetFile.name} -S ${S} -T ${T} -o ${sorted1.name}`, optionsNoOutput)
+  execSync(`sort ${sourceFile.name} -S ${S} -T ${T} -o ${sorted2.name}`, optionsNoOutput)
 
-  let output1 = getTempFile();
-  let output2 = getTempFile();
+  let output1 = tmp.fileSync();
+  let output2 = tmp.fileSync();
 
-  execSync(`comm -23 ${sorted1} ${sorted2} | tee ${output1}`)
-  execSync(`comm -13 ${sorted1} ${sorted2} | tee ${output2}`)
+  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`)
+  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`)
 
-  let inserts = lines(output1)
-  let deletes = lines(output2)
+  let inserts = lines(output1.name)
+  let deletes = lines(output2.name)
 
-  execSync(`rm -fv ${sorted1} ${sorted2} ${output1} ${output2}`, optionsNoOutput)
-  execSync(`rm -fv ${targetFile} ${sourceFile}`)
+  sorted1.removeCallback();
+  sorted2.removeCallback();
+  output1.removeCallback();
+  output2.removeCallback();
 
   return {
     inserts: inserts,
@@ -298,9 +296,11 @@ function diffTriplesData(target, source) {
     diff.inserts = target;
   } else if (USE_FILE_DIFF) {
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
-    let targetFile = arrayToFile(target, getTempFile())
-    let sourceFile = arrayToFile(source, getTempFile())
+    let targetFile = arrayToFile(target, tmp.fileSync())
+    let sourceFile = arrayToFile(source, tmp.fileSync())
     diff = diffFiles(targetFile, sourceFile)
+    targetFile.removeCallback();
+    sourceFile.removeCallback();
   } else {
     const diff = { inserts: [], deletes: [] };
 
