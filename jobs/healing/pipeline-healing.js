@@ -267,8 +267,8 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   let output1 = tmp.fileSync();
   let output2 = tmp.fileSync();
 
-  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`)
-  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`)
+  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`, optionsNoOutput)
+  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`, optionsNoOutput)
 
   let inserts = lines(output1.name)
   let deletes = lines(output2.name)
@@ -295,6 +295,7 @@ function diffTriplesData(target, source) {
   } else if (source.length === 0) {
     diff.inserts = target;
   } else if (USE_FILE_DIFF) {
+    console.log(`DOING FILE BASED DIFF, target size is ${target.length}, source size is ${source.length}`)
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
     let targetFile = arrayToFile(target, tmp.fileSync())
     let sourceFile = arrayToFile(source, tmp.fileSync())
