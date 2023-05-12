@@ -5,6 +5,12 @@ import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
 import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
 import { appendPublicationGraph } from '../utils';
+import {
+  MU_AUTH_ENDPOINT,
+  PUBLICATION_MU_AUTH_ENDPOINT,
+  PUBLICATION_VIRTUOSO_ENDPOINT,
+  VIRTUOSO_ENDPOINT
+} from "../../env-config";
 
 
 export async function runHealingTask(service_config, service_export_config, task, isInitialSync) {
@@ -35,7 +41,7 @@ export async function runHealingTask(service_config, service_export_config, task
     for(const property of Object.keys(propertyMap)){
 
       const sourceTriples = await getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri);
-      const publicationGraphTriples = await getPublicationTriples(service_config, property, service_config.PUBLICATION_GRAPH);
+      const publicationGraphTriples = await getPublicationTriples(service_config, property, service_config.publicationGraph);
 
       console.log('Calculating diffs, this may take a while');
       const diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
@@ -45,42 +51,42 @@ export async function runHealingTask(service_config, service_export_config, task
 
     }
 
-    let extraHeaders = { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
+    let extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdPublicationGraphMaintenance };
     if(isInitialSync){
-      extraHeaders = { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_INITIAL_SYNC };
+      extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdInitialSync };
     }
 
-    let publicationEndpoint = service_config.PUBLICATION_MU_AUTH_ENDPOINT;
-    if(service_config.SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+    let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
+    if(service_config.skipMuAuthInitialSync && isInitialSync){
       console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
-      publicationEndpoint = service_config.PUBLICATION_VIRTUOSO_ENDPOINT;
+      publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
     if(accumulatedDiffs.deletes.length){
       const deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
       await batchedUpdate(service_config, deletes,
-                          service_config.PUBLICATION_GRAPH,
+                          service_config.publicationGraph,
                           'DELETE',
                           500,
-                          service_config.HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.healingPatchGraphBatchSize,
                           extraHeaders,
                           publicationEndpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-      await createResultsContainer(service_config, task, deletes, service_config.REMOVAL_CONTAINER, 'removed-triples.ttl');
+      await createResultsContainer(service_config, task, deletes, service_config.removalContainer, 'removed-triples.ttl');
     }
 
     if(accumulatedDiffs.inserts.length){
       const inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
       await batchedUpdate(service_config, inserts,
-                          service_config.PUBLICATION_GRAPH,
+                          service_config.publicationGraph,
                           'INSERT',
                           500,
-                          service_config.HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.healingPatchGraphBatchSize,
                           extraHeaders,
                           publicationEndpoint
                          );
-      await createResultsContainer(service_config, task, inserts, service_config.INSERTION_CONTAINER, 'inserted-triples.ttl');
+      await createResultsContainer(service_config, task, inserts, service_config.insertionContainer, 'inserted-triples.ttl');
     }
 
     console.log(`started at ${started}`);
@@ -118,7 +124,7 @@ function groupPathToConceptSchemePerProperty(config){
 async function createResultsContainer(service_config, task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
-  const turtleFile = await writeTtlFile(service_config.REPORTING_FILES_GRAPH || task.graph, nTriples.join('\n'), fileName);
+  const turtleFile = await writeTtlFile(service_config.reportingFilesGraph || task.graph, nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
@@ -132,7 +138,7 @@ async function getSourceTriples(service_config, service_export_config, property,
                                                              config,
                                                              property,
                                                              conceptSchemeUri,
-                                                             service_config.PUBLICATION_GRAPH,
+                                                             service_config.publicationGraph,
                                                              service_export_config);
 
     const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
@@ -157,7 +163,7 @@ async function getPublicationTriples(service_config, property, publicationGraph)
   `;
 
   //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = service_config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? service_config.PUBLICATION_VIRTUOSO_ENDPOINT : service_config.PUBLICATION_MU_AUTH_ENDPOINT;
+  const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);
@@ -216,7 +222,7 @@ async function getScopedSourceTriples(service_config, config, property, conceptS
   `;
 
   //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = service_config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? service_config.VIRTUOSO_ENDPOINT : service_config.MU_AUTH_ENDPOINT;
+  const endpoint = service_config.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromDatabase, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);

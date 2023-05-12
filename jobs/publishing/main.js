@@ -5,6 +5,7 @@ import { batchedQuery, batchedUpdate, serializeTriple, storeError } from '../../
 import { produceDelta } from './producer';
 import { sparqlEscapeUri } from 'mu';
 import { appendPublicationGraph } from '../utils';
+import {PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT} from "../../env-config";
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
@@ -26,23 +27,23 @@ export async function updatePublicationGraph(service_config, service_export_conf
 
     if(deletes.length){
       await batchedUpdate(service_config, deletes.map(service_config, t => serializeTriple(t)),
-                          service_config.PUBLICATION_GRAPH,
+                          service_config.publicationGraph,
                           'DELETE',
-                          service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                          service_config.updatePublicationGraphSleep,
                           100,
-                          { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
-                          service_config.PUBLICATION_MU_AUTH_ENDPOINT
+                          { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
+                          PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
     if(inserts.length){
       await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
-                          service_config.PUBLICATION_GRAPH,
+                          service_config.publicationGraph,
                           'INSERT',
-                          service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                          service_config.updatePublicationGraphSleep,
                           100,
-                          { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
-                          service_config.PUBLICATION_MU_AUTH_ENDPOINT
+                          { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
+                          PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
@@ -68,7 +69,7 @@ async function filterActualChangesToPublicationGraph(service_config, delta){
   // Comparing the atomic delete from delta directly to the target graph, to conclude it is an effective change yields
   // wrong results, because the insert:s1 won't be considered an effective insert.
   // I.e. we end up with delta: [ deletes: s1 ] to execute against the publication graph.
-  const dbEndpoint = service_config.SKIP_MU_AUTH_DELTA_FOLDING ? service_config.PUBLICATION_VIRTUOSO_ENDPOINT : service_config.PUBLICATION_MU_AUTH_ENDPOINT;
+  const dbEndpoint = service_config.skipMuAuthDeltaFolding ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   const foldedDelta = await foldChangeSet(service_config, delta, { dbEndpoint });
   const foldedDeletes = chain(foldedDelta).map(c => c.deletes).flatten().value();
   const foldedInserts = chain(foldedDelta).map(c => c.inserts).flatten().value();
@@ -76,18 +77,18 @@ async function filterActualChangesToPublicationGraph(service_config, delta){
 
   //From this folded information, we now check whether the publication graph needs an update
   for(const triple of foldedDeletes){
-    if((await tripleExists(triple, service_config.PUBLICATION_GRAPH, { dbEndpoint })) ){
+    if((await tripleExists(triple, service_config.publicationGraph, { dbEndpoint })) ){
       actualDeletes.push(triple);
-      await new Promise(r => setTimeout(r, service_config.UPDATE_PUBLICATION_GRAPH_SLEEP)); //performance consideration
+      await new Promise(r => setTimeout(r, service_config.updatePublicationGraphSleep)); //performance consideration
     }
   }
 
   const actualInserts = [];
 
   for(const triple of foldedInserts){
-    if( !(await tripleExists(triple, service_config.PUBLICATION_GRAPH, { dbEndpoint })) ){
+    if( !(await tripleExists(triple, service_config.publicationGraph, { dbEndpoint })) ){
       actualInserts.push(triple);
-      await new Promise(r => setTimeout(r, service_config.UPDATE_PUBLICATION_GRAPH_SLEEP));
+      await new Promise(r => setTimeout(r, service_config.updatePublicationGraphSleep));
     }
   }
 
@@ -129,17 +130,17 @@ async function foldChangeSet(service_config, delta, config ){
     await batchedUpdate(service_config, deletes.map(t => serializeTriple(t)),
                         tempDeleteGraph,
                         'INSERT',
-                        service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                        service_config.updatePublicationGraphSleep,
                         100,
-                        { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
                         config.dbEndpoint
                        );
     await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
                         tempInsertGraph,
                         'INSERT',
-                        service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                        service_config.updatePublicationGraphSleep,
                         100,
-                        { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
                         config.dbEndpoint
                        );
 
@@ -179,10 +180,10 @@ async function foldChangeSet(service_config, delta, config ){
       `;
     };
 
-    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
                  { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
                 );
-    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
                  { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
                 );
   }

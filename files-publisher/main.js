@@ -1,19 +1,20 @@
 import DeltaCache from './delta-cache';
 import { storeError } from '../lib/utils';
+import {LOG_INCOMING_DELTA} from "../env-config";
 
 const cache = new DeltaCache();
 let hasTimeout = null;
 
 export async function publishDeltaFiles(service_config, delta ){
   if((delta.inserts.length || delta.deletes.length)){
-    if (service_config.LOG_INCOMING_DELTA) {
+    if (LOG_INCOMING_DELTA) {
       console.log(`Receiving delta ${JSON.stringify(delta)}`);
     }
 
     const processDelta = async function() {
       try {
 
-        if (service_config.LOG_OUTGOING_DELTA) {
+        if (service_config.logOutgoingDelta) {
           console.log(`Pushing onto cache ${JSON.stringify(delta)}`);
         }
 
@@ -48,7 +49,7 @@ function triggerTimeout(service_config){
       console.error(`Error generating delta file ${e}`);
       storeError(e);
     }
-  }, service_config.DELTA_INTERVAL );
+  }, service_config.deltaInterval );
   hasTimeout = true;
 }
 

@@ -3,6 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
+import {CACHE_CHUNK_ARRAY, CACHE_CHUNK_STATEMENT, prettyPrintDiffJson} from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -36,13 +37,13 @@ export default class DeltaCache {
         try {
           const folderDate = new Date();
           const subFolder = folderDate.toISOString().split('T')[0];
-          const outputDirectory = `${SHARE_FOLDER}/${service_config.RELATIVE_FILE_PATH}/${subFolder}`;
+          const outputDirectory = `${SHARE_FOLDER}/${service_config.relativeFilePath}/${subFolder}`;
           fs.mkdirSync(outputDirectory, { recursive: true });
 
           const filename = `delta-${new Date().toISOString()}-${index}.json`;
           const filepath = `${outputDirectory}/${filename}`;
 
-          if(service_config.PRETTY_PRINT_DIFF_JSON){
+          if(prettyPrintDiffJson){
             await fs.writeFile(filepath, JSON.stringify( entry, null, 2 ));
           }
           else {
@@ -74,13 +75,13 @@ export default class DeltaCache {
     console.log(`Retrieving delta files since ${since}`);
 
     const result = await query(`
-    ${service_config.PREFIXES}
+    ${service_config.prefixes}
 
     SELECT ?uuid ?filename ?created WHERE {
       ?s a nfo:FileDataObject ;
           mu:uuid ?uuid ;
           nfo:fileName ?filename ;
-          dct:publisher <${service_config.PUBLISHER_URI}> ;
+          dct:publisher <${service_config.publisherUri}> ;
           dct:created ?created .
       ?file nie:dataSource ?s .
 
@@ -111,10 +112,10 @@ export default class DeltaCache {
     const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
 
     await update(`
-    ${service_config.PREFIXES}
+    ${service_config.prefixes}
 
     INSERT DATA {
-      GRAPH <${service_config.FILES_GRAPH}> {
+      GRAPH <${service_config.filesGraph}> {
         <${virtualFileUri}> a nfo:FileDataObject ;
           mu:uuid "${virtualFileUuid}" ;
           nfo:fileName "${filename}" ;
@@ -122,7 +123,7 @@ export default class DeltaCache {
           dbpedia:fileExtension "json" ;
           dct:created ${nowLiteral} ;
           dct:modified ${nowLiteral} ;
-          dct:publisher <${service_config.PUBLISHER_URI}> .
+          dct:publisher <${service_config.publisherUri}> .
         <${physicalFileUri}> a nfo:FileDataObject ;
           mu:uuid "${physicalFileUuid}" ;
           nie:dataSource <${virtualFileUri}> ;
@@ -133,7 +134,7 @@ export default class DeltaCache {
           dct:modified ${nowLiteral} .
       }
     }
-  `, { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+  `, { 'mu-call-scope-id': service_config.muCallScopeIdPublicationGraphMaintenance });
   }
 }
 
@@ -148,8 +149,8 @@ function chunkCache(service_config, cache ) {
   for(const entry of cache){
 
     //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
-    const insertChunks = _.chunk(entry.inserts, service_config.CACHE_CHUNK_STATEMENT);
-    const deleteChunks = _.chunk(entry.deletes, service_config.CACHE_CHUNK_STATEMENT);
+    const insertChunks = _.chunk(entry.inserts, CACHE_CHUNK_STATEMENT);
+    const deleteChunks = _.chunk(entry.deletes, CACHE_CHUNK_STATEMENT);
 
     if(deleteChunks.length > 1 || insertChunks.length > 1 ){
       for(const deleteChunk of deleteChunks){
@@ -166,5 +167,5 @@ function chunkCache(service_config, cache ) {
       allChunks.push(entry);
     }
   }
-  return _.chunk(allChunks, service_config.CACHE_CHUNK_ARRAY);
+  return _.chunk(allChunks, CACHE_CHUNK_ARRAY);
 }

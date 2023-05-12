@@ -2,7 +2,9 @@ import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import {
-  Config
+  ACCOUNT,
+  ACCOUNT_GRAPH,
+  Config, CONFIG_SERVICES_JSON_PATH, KEY, LOG_INCOMING_DELTA
 } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeHealingTask } from './jobs/healing/main';
@@ -16,21 +18,21 @@ app.use( bodyParser.json({
   limit: '500mb'
 }));
 
-let services = require('/config/services.json');
+let services = require(CONFIG_SERVICES_JSON_PATH);
 
 console.log("Services config is: ", services)
 for (const name in services){
   let service = services[name]
   const service_config = new Config(service);
-  const service_export_config = loadConfiguration(service_config.EXPORT_CONFIG_PATH);
+  const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
   const producerQueue = new ProcessingQueue(service_config);
 
-  app.post(service_config.DELTA_PATH, async function (req, res) {
+  app.post(service_config.deltaPath, async function (req, res) {
     try {
       const body = req.body;
 
-      if (service_config.LOG_INCOMING_DELTA)
+      if (LOG_INCOMING_DELTA)
         console.log(`Receiving delta ${JSON.stringify(body)}`);
 
       if (await doesDeltaContainNewTaskToProcess(service_config, body)) {
@@ -67,13 +69,13 @@ for (const name in services){
         //    by the delta-file service itself
         //  - Some kind of multi lock system, where all the services involved should tell they are ready to be healed.
         console.info('Blocking jobs are active, skipping incoming deltas');
-      } else if (service_config.WAIT_FOR_INITIAL_SYNC && !await hasInitialSyncRun(service_config)) {
+      } else if (service_config.waitForInitialSync && !await hasInitialSyncRun(service_config)) {
         // To produce and publish consistent deltas an initial sync needs to have run.
         // The initial sync job produces a dump file which provides a cartesian starting point for the delta diff files to make sense on.
         // It doesn't produce delta diff files, because performance.
         // All consumers are assumed to first ingest the delta dump, before consuming the diff files.
         // If delta-diff files are published before the initial sync and consumers already have ingested these, we run into troubles.
-        // Note: WAIT_FOR_INITIAL_SYNC is mainly meant for debugging purposes, defaults to true
+        // Note: waitForInitialSync is mainly meant for debugging purposes, defaults to true
         console.info('Initial sync did not run yet, skipping incoming deltas');
       } else {
         //normal operation mode: maintaining the publication graph
@@ -91,7 +93,7 @@ for (const name in services){
   async function runPublicationFlow(service_config, service_export_config, deltas) {
     try {
       const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
-      if (service_config.SERVE_DELTA_FILES) {
+      if (service_config.serveDeltaFiles) {
         await publishDeltaFiles(service_config, insertedDeltaData);
       }
     } catch (error) {
@@ -100,9 +102,9 @@ for (const name in services){
     }
   }
 
-  if (service_config.SERVE_DELTA_FILES) {
-//This endpoint only makes sense if SERVE_DELTA_FILES is set to true;
-    app.get(service_config.FILES_PATH, async function (req, res) {
+  if (service_config.serveDeltaFiles) {
+//This endpoint only makes sense if serveDeltaFiles is set to true;
+    app.get(service_config.filesPath, async function (req, res) {
       const files = await getDeltaFiles(service_config, req.query.since);
       res.json({data: files});
     });
@@ -111,11 +113,11 @@ for (const name in services){
 // This is useful if the data in the files is confidential
 // Note that you will need to configure mu-auth so it can make sense out of it
 // TODO: probably this functionality will move somewhere else
-  app.post(service_config.LOGIN_PATH, async function (req, res) {
+  app.post(service_config.loginPath, async function (req, res) {
     try {
 
       // 0. To avoid false sense of security, login only makes sense if accepted key is configured
-      if (!service_config.KEY) {
+      if (!KEY) {
         throw "No key configured in service.";
       }
 
@@ -123,7 +125,7 @@ for (const name in services){
       const sessionUri = req.get('mu-session-id');
 
       // 2. validate credentials
-      if (req.get("key") !== service_config.KEY) {
+      if (req.get("key") !== KEY) {
         throw "Key does not match";
       }
 
@@ -131,8 +133,8 @@ for (const name in services){
       updateSudo(`
       PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
       INSERT DATA {
-        GRAPH ${sparqlEscapeUri(service_config.ACCOUNT_GRAPH)} {
-          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(service_config.ACCOUNT)}.
+        GRAPH ${sparqlEscapeUri(ACCOUNT_GRAPH)} {
+          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(ACCOUNT)}.
         }
       }`);
 

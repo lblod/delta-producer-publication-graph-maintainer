@@ -19,12 +19,6 @@ Add the service to your `docker-compose.yml`:
     volumes:
       - ./data/files:/share
       - ./config/producer/mandatarissen:/config
-    environment:
-      RELATIVE_FILE_PATH: "deltas/mandatarissen"
-      PUBLICATION_GRAPH: 'http://redpencil.data.gift/id/deltas/producer/loket-mandatarissen-producer'
-      HEALING_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltaHealingMandatarissen'
-      INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION: 'http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initibalPublicationGraphSyncing/mandatarissen'
-
 ```
 Next, configure the delta-notifier in `./config/delta/rules.js` to send delta messages for all changes:
 
@@ -161,64 +155,56 @@ The `export` array may contain multiple entries for an `rdf:type`.
 A resource may have multiple types and therefore map to multiple export configurations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
 
 #### Deltastream configuration
-The deltastream configuration allows for multiple deltastreams in one instance, it is specified in `/config/services.json`.
+The deltastream configuration allows for multiple deltastreams in one instance, it is specified by `CONFIG_SERVICES_JSON_PATH`.
 The json file represents a dictionary of service configurations with the key being the name of the service and the value the configuration.
 The proporties are:
-* `JOBS_GRAPH (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
-* `ERROR_CREATOR_URI (default: "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer")`: URI of the creator of errors
-* `HEALING_PATCH_GRAPH_BATCH_SIZE (default: 100)`: Size of insert/delete batches.
-* `UPDATE_PUBLICATION_GRAPH_SLEEP (default: 1000)`: Sleep between batch updates in the update of the publication graph
-* `MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE (default: http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance)`: can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
-* `MU_CALL_SCOPE_ID_INITIAL_SYNC (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
-* `WAIT_FOR_INITIAL_SYNC`: wait for initial sync. Defaults to 'true', mainly meant to disable for debugging purposes
-* `PUBLICATION_GRAPH (required)`: URI of the publication graph to maintain
-* `INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION (required)`: URI of the job operation for intial syncing to listen to.
-* `HEALING_JOB_OPERATION (required)`: URI of the job operation for healing operation to listen to.
-* `USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS (default: false)`: Whether to use virtuoso for expensive selects.
-* `SKIP_MU_AUTH_INITIAL_SYNC: Initial sync is expensive. Mu-auth can be skipped here. But be aware about what this implies!`
-* `VIRTUOSO_ENDPOINT (default: http://virtuoso:8890/sparql)`: Location of the virtuoso endpoint.
-* `MU_AUTH_ENDPOINT (default: http://database:8890/sparql)`: Location of the mu-auth endpoint
-* `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Location of the virtuoso endpoint.
-* `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
-* `SERVE_DELTA_FILES (default: false)`: Whether to serve delta files.
-* `LOG_OUTGOING_DELTA (default: false)`: Whether to log the delta messages as sent
-* `DELTA_INTERVAL (default: 1000)`: Interval between outgoing delta messages
-* `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
-* `ERROR_GRAPH (default: http://mu.semte.ch/graphs/system/errors)`: The graph in which the errors should be stored.
-* `RELATIVE_FILE_PATH (default: "deltas")`: relative path of the delta files compared to the root folder of the file service that will host the files.
-* `FILES_GRAPH (default: http://mu.semte.ch/graphs/public)`: The graph in which the files should be stored.
-* `QUEUE_POLL_INTERVAL`: the queue is polled every minute by default.
-* `REPORTING_FILES_GRAPH`: If a specific graph is needed for the reports (e.g. healing) add URI here.
-* `PUBLISHER_URI (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
-* `KEY (default: '')`: The login key
-* `ACCOUNT (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
-* `ACCOUNT_GRAPH (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph
-* `DELTA_PATH`: The path where the delta messages arrive
-* `FILES_PATH`: The path where the files are served
-* `LOGIN_PATH`: The login path
+* `jobsGraph (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
+* `errorCreatorUri (default: "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer")`: URI of the creator of errors
+* `healingPatchGraphBatchSize (default: 100)`: Size of insert/delete batches.
+* `updatePublicationGraphSleep (default: 1000)`: Sleep between batch updates in the update of the publication graph
+* `muCallScopeIdPublicationGraphMaintenance (default: http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance)`: can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
+* `muCallScopeIdInitialSync (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
+* `waitForInitialSync`: wait for initial sync. Defaults to 'true', mainly meant to disable for debugging purposes
+* `publicationGraph (required)`: URI of the publication graph to maintain
+* `initialPublicationGraphSyncJobOperation (required)`: URI of the job operation for intial syncing to listen to.
+* `healingJobOperation (required)`: URI of the job operation for healing operation to listen to.
+* `useVirtuosoForExpensiveSelects (default: false)`: Whether to use virtuoso for expensive selects.
+* `skipMuAuthInitialSync: Initial sync is expensive. Mu-auth can be skipped here. But be aware about what this implies!`
+* `serveDeltaFiles (default: false)`: Whether to serve delta files.
+* `logOutgoingDelta (default: false)`: Whether to log the delta messages as sent
+* `deltaInterval (default: 1000)`: Interval between outgoing delta messages
+* `errorGraph (default: http://mu.semte.ch/graphs/system/errors)`: The graph in which the errors should be stored.
+* `relativeFilePath (default: "deltas")`: relative path of the delta files compared to the root folder of the file service that will host the files.
+* `filesGraph (default: http://mu.semte.ch/graphs/public)`: The graph in which the files should be stored.
+* `queuePollInterval`: the queue is polled every minute by default.
+* `reportingFilesGraph`: If a specific graph is needed for the reports (e.g. healing) add URI here.
+* `publisherUri (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
+* `deltaPath`: The path where the delta messages arrive
+* `filesPath`: The path where the files are served
+* `loginPath`: The login path
 * E.g.:
 
 ```json
     "besluiten": {
-        "DELTA_INTERVAL_MS": 10000,
-        "DELTA_PATH": "/besluiten/delta",
-        "ERROR_CREATOR_URI": "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer-besluiten",
-        "ERROR_GRAPH": "http://mu.semte.ch/graphs/harvesting",
-        "EXPORT_CONFIG_PATH": "/config/besluiten/export.json",
-        "FILES_GRAPH": "http://mu.semte.ch/graphs/harvesting",
-        "FILES_PATH": "/besluiten/files",
-        "HEALING_JOB_OPERATION": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/healingOperation/besluiten",
-        "INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initialPublicationGraphSyncing/besluiten",
-        "JOBS_GRAPH": "http://mu.semte.ch/graphs/harvesting",
-        "LOGIN_PATH": "/besluiten/login",
-        "PRETTY_PRINT_DIFF_JSON": "true",
-        "PUBLICATION_GRAPH": "http://redpencil.data.gift/id/deltas/producer/lblod-harvester-besluiten-producer",
-        "PUBLISHER_URI": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
-        "QUEUE_POLL_INTERVAL": 3000,
-        "RELATIVE_FILE_PATH": "deltas/besluiten",
-        "SERVE_DELTA_FILES": "true",
-        "SKIP_MU_AUTH_INITIAL_SYNC": "false",
-        "USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS": "true"
+        "deltaInterval": 10000,
+        "deltaPath": "/besluiten/delta",
+        "errorCreatorUri": "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer-besluiten",
+        "errorGraph": "http://mu.semte.ch/graphs/harvesting",
+        "exportConfigPath": "/config/besluiten/export.json",
+        "filesGraph": "http://mu.semte.ch/graphs/harvesting",
+        "filesPath": "/besluiten/files",
+        "healingJobOperation": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/healingOperation/besluiten",
+        "initialPublicationGraphSyncJobOperation": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initialPublicationGraphSyncing/besluiten",
+        "jobsGraph": "http://mu.semte.ch/graphs/harvesting",
+        "loginPath": "/besluiten/login",
+        "prettyPrintDiffJson": "true",
+        "publicationGraph": "http://redpencil.data.gift/id/deltas/producer/lblod-harvester-besluiten-producer",
+        "publisherUri": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
+        "queuePollInterval": 3000,
+        "relativeFilePath": "deltas/besluiten",
+        "serveDeltaFiles": "true",
+        "skipMuAuthInitialSync": "false",
+        "useVirtuosoForExpensiveSelects": "true"
     },
 ```
 
@@ -226,6 +212,15 @@ The proporties are:
 The following enviroment variables can be optionally configured:
 * `LOG_INCOMING_DELTA (default: "false")`: log the delta message as received from the delta-notifier to the console
 * `LOG_DELTA_REWRITE (default: "false")`: verbose log output during the rewrite of the incoming delta to the resulting delta. Only useful for debugging purposes.
+* `VIRTUOSO_ENDPOINT (default: http://virtuoso:8890/sparql)`: Location of the virtuoso endpoint.
+* `MU_AUTH_ENDPOINT (default: http://database:8890/sparql)`: Location of the mu-auth endpoint
+* `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Location of the virtuoso endpoint.
+* `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
+* `prettyPrintDiffJson (default: true)`: Whether to pretty print the diff json
+* `KEY (default: '')`: The login key
+* `ACCOUNT (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
+* `ACCOUNT_GRAPH (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph
+* `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
 
 ### API
 #### POST /delta
@@ -276,7 +271,7 @@ By configuring the following environment variables:
   "PUBLICATION_MU_AUTH_ENDPOINT": "http://database-2/sparql"
 ```
 the service can maintain the publication graph residing in another database.
-### SERVE_DELTA_FILES
+### serveDeltaFiles
 By setting this to "true", this service creates and host delta-files. In essence, it takes over the role of [delta-producer-json-diff-file-publisher](https://github.com/lblod/delta-producer-json-diff-file-publisher).
 The motivation of merge this functionality back here:
   - Occam's razor applied applied on services for sane defaults: in many cases, the format of the published files will be the same as what is generated with `delta-producer-json-diff-file-publisher`.
@@ -296,7 +291,7 @@ The following configuration needs to be added. Suppose the deltas to share are a
   # (...)
   KEY: "shared secret key between consumer and producer"
   ACCOUNT: "http://an/account/enabling/acces/to/delta-files-graph"
-  FILES_GRAPH: "http://redpencil.data.gift/id/deltas/producer/persons-sensitive"
+  filesGraph: "http://redpencil.data.gift/id/deltas/producer/persons-sensitive"
 ```
 #### dispatcher
 ```

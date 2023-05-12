@@ -11,24 +11,24 @@ export async function executeHealingTask(service_config, service_export_config) 
     //TODO: extra checks are required to make sure the system remains in consistent state
     // (this responsibility might move to background scheduler)
     //so, e.g. only one scheduled task for jobs of interest, only one job of interest a time etc..
-    const syncTaskUri = await getTaskUri(service_config, service_config.INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION, service_config.INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, service_config.STATUS_SCHEDULED);
-    const healingTaskUri = await getTaskUri(service_config, service_config.HEALING_JOB_OPERATION, service_config.HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, service_config.STATUS_SCHEDULED);
+    const syncTaskUri = await getTaskUri(service_config, service_config.initialPublicationGraphSyncJobOperation, service_config.initialPublicationGraphSyncTaskOperation, service_config.statusScheduled);
+    const healingTaskUri = await getTaskUri(service_config, service_config.healingJobOperation, service_config.healingPatchPublicationGraphTaskOperation, service_config.statusScheduled);
 
     let delta = { inserts: [], deletes: [] };
 
     if(syncTaskUri || healingTaskUri) {
       const task = await loadTask(service_config, syncTaskUri || healingTaskUri);
       try {
-        await updateTaskStatus(task, service_config.STATUS_BUSY);
+        await updateTaskStatus(task, service_config.statusBusy);
         delta = await runHealingTask(service_config, service_export_config, task, syncTaskUri ? true : false);
-        if(service_config.SERVE_DELTA_FILES && healingTaskUri){
+        if(service_config.serveDeltaFiles && healingTaskUri){
           await publishDeltaFiles(service_config, delta);
         }
-        await updateTaskStatus(task, service_config.STATUS_SUCCESS);
+        await updateTaskStatus(task, service_config.statusSuccess);
       }
       catch(e) {
         await appendTaskError(service_config, task, e.message || e);
-        await updateTaskStatus(task, service_config.STATUS_FAILED);
+        await updateTaskStatus(task, service_config.statusFailed);
         throw e;
       }
     }
@@ -45,15 +45,15 @@ export async function executeHealingTask(service_config, service_export_config) 
 //TODO: refactor this to a more generic task filter in lib/task.js
 async function getTaskUri(service_config, jobOperationUri, taskOperationUri, statusUri ){
   const queryString = `
-    ${service_config.PREFIXES}
+    ${service_config.prefixes}
 
     SELECT DISTINCT ?task WHERE {
       GRAPH ?g {
-          ?job a ${sparqlEscapeUri(service_config.JOB_TYPE)};
+          ?job a ${sparqlEscapeUri(service_config.jobType)};
             task:operation ${sparqlEscapeUri(jobOperationUri)}.
 
           ?task dct:isPartOf ?job;
-            a ${sparqlEscapeUri(service_config.TASK_TYPE)};
+            a ${sparqlEscapeUri(service_config.taskType)};
             task:operation ${sparqlEscapeUri(taskOperationUri)};
             adms:status ${sparqlEscapeUri(statusUri)}.
        }
