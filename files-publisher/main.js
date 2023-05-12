@@ -4,51 +4,51 @@ import { storeError } from '../lib/utils';
 const cache = new DeltaCache();
 let hasTimeout = null;
 
-export async function publishDeltaFiles( _config, delta ){
+export async function publishDeltaFiles(service_config, delta ){
   if((delta.inserts.length || delta.deletes.length)){
-    if (_config.LOG_INCOMING_DELTA) {
+    if (service_config.LOG_INCOMING_DELTA) {
       console.log(`Receiving delta ${JSON.stringify(delta)}`);
     }
 
     const processDelta = async function() {
       try {
 
-        if (_config.LOG_OUTGOING_DELTA) {
+        if (service_config.LOG_OUTGOING_DELTA) {
           console.log(`Pushing onto cache ${JSON.stringify(delta)}`);
         }
 
         cache.push( delta );
 
         if( !hasTimeout ){
-          triggerTimeout(_config);
+          triggerTimeout(service_config);
         }
       }
       catch(e){
         console.error(`General error processing delta ${e}`);
-        await storeError(_config, e);
+        await storeError(service_config, e);
       }
     };
     processDelta();  // execute async to batch published data in files
   }
 }
 
-export async function getDeltaFiles( _config, since ){
+export async function getDeltaFiles(service_config, since ){
   since = since || new Date().toISOString();
-  const files = await cache.getDeltaFiles(_config, since);
+  const files = await cache.getDeltaFiles(service_config, since);
   return files;
 }
 
-function triggerTimeout(_config){
+function triggerTimeout(service_config){
   setTimeout( () => {
     try {
       hasTimeout = false;
-      cache.generateDeltaFile(_config);
+      cache.generateDeltaFile(service_config);
     }
     catch(e){
       console.error(`Error generating delta file ${e}`);
       storeError(e);
     }
-  }, _config.DELTA_INTERVAL );
+  }, service_config.DELTA_INTERVAL );
   hasTimeout = true;
 }
 

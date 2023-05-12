@@ -26,23 +26,23 @@ export default class DeltaCache {
    *
    * @public
   */
-  async generateDeltaFile(_config) {
+  async generateDeltaFile(service_config) {
     if (this.cache.length) {
       const cachedArray = [ ...this.cache ];
       this.cache = [];
 
-      const chunkedArray = chunkCache(_config, cachedArray);
+      const chunkedArray = chunkCache(service_config, cachedArray);
       for(const [ index, entry ] of chunkedArray.entries()) {
         try {
           const folderDate = new Date();
           const subFolder = folderDate.toISOString().split('T')[0];
-          const outputDirectory = `${SHARE_FOLDER}/${_config.RELATIVE_FILE_PATH}/${subFolder}`;
+          const outputDirectory = `${SHARE_FOLDER}/${service_config.RELATIVE_FILE_PATH}/${subFolder}`;
           fs.mkdirSync(outputDirectory, { recursive: true });
 
           const filename = `delta-${new Date().toISOString()}-${index}.json`;
           const filepath = `${outputDirectory}/${filename}`;
 
-          if(_config.PRETTY_PRINT_DIFF_JSON){
+          if(service_config.PRETTY_PRINT_DIFF_JSON){
             await fs.writeFile(filepath, JSON.stringify( entry, null, 2 ));
           }
           else {
@@ -51,11 +51,11 @@ export default class DeltaCache {
 
           console.log(`Delta cache has been written to file. Cache contained ${entry.length} items.`);
 
-          await this.writeFileToStore(_config, filename, filepath);
+          await this.writeFileToStore(service_config, filename, filepath);
           console.log("File is persisted in store and can be consumed now.");
 
         } catch (e) {
-          await storeError(_config, e);
+          await storeError(service_config, e);
         }
       }
     } else {
@@ -66,21 +66,21 @@ export default class DeltaCache {
   /**
    * Get all delta files produced since a given timestamp
    *
-   * @param _config the configuration to be used
+   * @param service_config the configuration to be used
    * @param since {string} ISO date time
    * @public
   */
-  async getDeltaFiles(_config, since) {
+  async getDeltaFiles(service_config, since) {
     console.log(`Retrieving delta files since ${since}`);
 
     const result = await query(`
-    ${_config.PREFIXES}
+    ${service_config.PREFIXES}
 
     SELECT ?uuid ?filename ?created WHERE {
       ?s a nfo:FileDataObject ;
           mu:uuid ?uuid ;
           nfo:fileName ?filename ;
-          dct:publisher <${_config.PUBLISHER_URI}> ;
+          dct:publisher <${service_config.PUBLISHER_URI}> ;
           dct:created ?created .
       ?file nie:dataSource ?s .
 
@@ -103,7 +103,7 @@ export default class DeltaCache {
   /**
    * @private
    */
-  async writeFileToStore(_config, filename, filepath) {
+  async writeFileToStore(service_config, filename, filepath) {
     const virtualFileUuid = uuid();
     const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
     const nowLiteral = sparqlEscapeDateTime(new Date());
@@ -111,10 +111,10 @@ export default class DeltaCache {
     const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
 
     await update(`
-    ${_config.PREFIXES}
+    ${service_config.PREFIXES}
 
     INSERT DATA {
-      GRAPH <${_config.FILES_GRAPH}> {
+      GRAPH <${service_config.FILES_GRAPH}> {
         <${virtualFileUri}> a nfo:FileDataObject ;
           mu:uuid "${virtualFileUuid}" ;
           nfo:fileName "${filename}" ;
@@ -122,7 +122,7 @@ export default class DeltaCache {
           dbpedia:fileExtension "json" ;
           dct:created ${nowLiteral} ;
           dct:modified ${nowLiteral} ;
-          dct:publisher <${_config.PUBLISHER_URI}> .
+          dct:publisher <${service_config.PUBLISHER_URI}> .
         <${physicalFileUri}> a nfo:FileDataObject ;
           mu:uuid "${physicalFileUuid}" ;
           nie:dataSource <${virtualFileUri}> ;
@@ -133,23 +133,23 @@ export default class DeltaCache {
           dct:modified ${nowLiteral} .
       }
     }
-  `, { 'mu-call-scope-id': _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+  `, { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
   }
 }
 
 /**
  * Chunks the cached array, to not exploded memory when writing to json
- * @param _config the configuration to be used
+ * @param service_config the configuration to be used
  * @param cache: [ { inserts: [], deletes: [] }, { inserts: [], deletes: [] } ]
  * @return [ [ { inserts: [], deletes: [] } ], [ { inserts: [], deletes: [] } ] ]
  */
-function chunkCache( _config, cache ) {
+function chunkCache(service_config, cache ) {
   const allChunks = [];
   for(const entry of cache){
 
     //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
-    const insertChunks = _.chunk(entry.inserts, _config.CACHE_CHUNK_STATEMENT);
-    const deleteChunks = _.chunk(entry.deletes, _config.CACHE_CHUNK_STATEMENT);
+    const insertChunks = _.chunk(entry.inserts, service_config.CACHE_CHUNK_STATEMENT);
+    const deleteChunks = _.chunk(entry.deletes, service_config.CACHE_CHUNK_STATEMENT);
 
     if(deleteChunks.length > 1 || insertChunks.length > 1 ){
       for(const deleteChunk of deleteChunks){
@@ -166,5 +166,5 @@ function chunkCache( _config, cache ) {
       allChunks.push(entry);
     }
   }
-  return _.chunk(allChunks, _config.CACHE_CHUNK_ARRAY);
+  return _.chunk(allChunks, service_config.CACHE_CHUNK_ARRAY);
 }

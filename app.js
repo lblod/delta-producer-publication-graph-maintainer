@@ -21,28 +21,28 @@ let services = require('/config/services.json');
 console.log("Services config is: ", services)
 for (const name in services){
   let service = services[name]
-  const _config = new Config(service);
-  const _export_config = loadConfiguration(_config.EXPORT_CONFIG_PATH);
+  const service_config = new Config(service);
+  const service_export_config = loadConfiguration(service_config.EXPORT_CONFIG_PATH);
 
-  const producerQueue = new ProcessingQueue(_config);
+  const producerQueue = new ProcessingQueue(service_config);
 
-  app.post(_config.DELTA_PATH, async function (req, res) {
+  app.post(service_config.DELTA_PATH, async function (req, res) {
     try {
       const body = req.body;
 
-      if (_config.LOG_INCOMING_DELTA)
+      if (service_config.LOG_INCOMING_DELTA)
         console.log(`Receiving delta ${JSON.stringify(body)}`);
 
-      if (await doesDeltaContainNewTaskToProcess(_config, body)) {
+      if (await doesDeltaContainNewTaskToProcess(service_config, body)) {
         //From here on, the database is source of truth and the incoming delta was just a signal to start
         console.log(`Healing process (or initialSync) will start.`);
         console.log(`There were still ${producerQueue.queue.length} jobs in the queue`);
         console.log(`And the queue executing state is on ${producerQueue.executing}.`);
         producerQueue.queue = []; //Flush all remaining jobs, we don't want moving parts cf. next comment
         producerQueue.addJob(async () => {
-          return await executeHealingTask(_config, _export_config);
+          return await executeHealingTask(service_config, service_export_config);
         });
-      } else if (await isBlockingJobActive(_config)) {
+      } else if (await isBlockingJobActive(service_config)) {
         // During the healing (and probably initial sync too) we want as few as much moving parts,
         // If a delta comes in while the healing process is busy, this might yield inconsistent/difficult to troubleshoot results.
         // Suppose:
@@ -67,7 +67,7 @@ for (const name in services){
         //    by the delta-file service itself
         //  - Some kind of multi lock system, where all the services involved should tell they are ready to be healed.
         console.info('Blocking jobs are active, skipping incoming deltas');
-      } else if (_config.WAIT_FOR_INITIAL_SYNC && !await hasInitialSyncRun(_config)) {
+      } else if (service_config.WAIT_FOR_INITIAL_SYNC && !await hasInitialSyncRun(service_config)) {
         // To produce and publish consistent deltas an initial sync needs to have run.
         // The initial sync job produces a dump file which provides a cartesian starting point for the delta diff files to make sense on.
         // It doesn't produce delta diff files, because performance.
@@ -78,32 +78,32 @@ for (const name in services){
       } else {
         //normal operation mode: maintaining the publication graph
         //Put in a queue, because we want to make sure to have them ordered.
-        producerQueue.addJob(async () => await runPublicationFlow(_config, _export_config, body));
+        producerQueue.addJob(async () => await runPublicationFlow(service_config, service_export_config, body));
       }
       res.status(202).send();
     } catch (error) {
       console.error(error);
-      await storeError(_config, error);
+      await storeError(service_config, error);
       res.status(500).send();
     }
   });
 
-  async function runPublicationFlow(_config, _export_config, deltas) {
+  async function runPublicationFlow(service_config, service_export_config, deltas) {
     try {
-      const insertedDeltaData = await updatePublicationGraph(_config, _export_config, deltas);
-      if (_config.SERVE_DELTA_FILES) {
-        await publishDeltaFiles(_config, insertedDeltaData);
+      const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
+      if (service_config.SERVE_DELTA_FILES) {
+        await publishDeltaFiles(service_config, insertedDeltaData);
       }
     } catch (error) {
       console.error(error);
-      await storeError(_config, error);
+      await storeError(service_config, error);
     }
   }
 
-  if (_config.SERVE_DELTA_FILES) {
+  if (service_config.SERVE_DELTA_FILES) {
 //This endpoint only makes sense if SERVE_DELTA_FILES is set to true;
-    app.get(_config.FILES_PATH, async function (req, res) {
-      const files = await getDeltaFiles(_config, req.query.since);
+    app.get(service_config.FILES_PATH, async function (req, res) {
+      const files = await getDeltaFiles(service_config, req.query.since);
       res.json({data: files});
     });
   }
@@ -111,11 +111,11 @@ for (const name in services){
 // This is useful if the data in the files is confidential
 // Note that you will need to configure mu-auth so it can make sense out of it
 // TODO: probably this functionality will move somewhere else
-  app.post(_config.LOGIN_PATH, async function (req, res) {
+  app.post(service_config.LOGIN_PATH, async function (req, res) {
     try {
 
       // 0. To avoid false sense of security, login only makes sense if accepted key is configured
-      if (!_config.KEY) {
+      if (!service_config.KEY) {
         throw "No key configured in service.";
       }
 
@@ -123,7 +123,7 @@ for (const name in services){
       const sessionUri = req.get('mu-session-id');
 
       // 2. validate credentials
-      if (req.get("key") !== _config.KEY) {
+      if (req.get("key") !== service_config.KEY) {
         throw "Key does not match";
       }
 
@@ -131,8 +131,8 @@ for (const name in services){
       updateSudo(`
       PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
       INSERT DATA {
-        GRAPH ${sparqlEscapeUri(_config.ACCOUNT_GRAPH)} {
-          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(_config.ACCOUNT)}.
+        GRAPH ${sparqlEscapeUri(service_config.ACCOUNT_GRAPH)} {
+          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(service_config.ACCOUNT)}.
         }
       }`);
 

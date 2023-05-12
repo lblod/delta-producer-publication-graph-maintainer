@@ -7,14 +7,14 @@ import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib
 import { appendPublicationGraph } from '../utils';
 
 
-export async function runHealingTask(_config, _export_config, task, isInitialSync) {
+export async function runHealingTask(service_config, service_export_config, task, isInitialSync) {
   try {
-    const conceptSchemeUri = _export_config.conceptScheme;
+    const conceptSchemeUri = service_export_config.conceptScheme;
     const started = new Date();
 
     console.log(`starting at ${started}`);
 
-    const propertyMap = groupPathToConceptSchemePerProperty(_export_config.export);
+    const propertyMap = groupPathToConceptSchemePerProperty(service_export_config.export);
 
     let accumulatedDiffs = { inserts: [], deletes: [] };
 
@@ -22,7 +22,7 @@ export async function runHealingTask(_config, _export_config, task, isInitialSyn
     // The triples to push to the publication graph should be equal to
     // - all triples whose ?s link to the concept scheme (through pathToConceptScheme)
     //   (note if no path defined, then this condition returns true) AND
-    // - whose ?p match the properties defined in the _export_config AND
+    // - whose ?p match the properties defined in the service_export_config AND
     // - who match any of the configured types AND
     // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predefined graphs)
     //
@@ -34,8 +34,8 @@ export async function runHealingTask(_config, _export_config, task, isInitialSyn
     // The additions are A\B, and removals are B\A
     for(const property of Object.keys(propertyMap)){
 
-      const sourceTriples = await getSourceTriples(_config, _export_config, property, propertyMap, conceptSchemeUri);
-      const publicationGraphTriples = await getPublicationTriples(_config, property, _config.PUBLICATION_GRAPH);
+      const sourceTriples = await getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri);
+      const publicationGraphTriples = await getPublicationTriples(service_config, property, service_config.PUBLICATION_GRAPH);
 
       console.log('Calculating diffs, this may take a while');
       const diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
@@ -45,49 +45,49 @@ export async function runHealingTask(_config, _export_config, task, isInitialSyn
 
     }
 
-    let extraHeaders = { 'mu-call-scope-id': _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
+    let extraHeaders = { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
     if(isInitialSync){
-      extraHeaders = { 'mu-call-scope-id': _config.MU_CALL_SCOPE_ID_INITIAL_SYNC };
+      extraHeaders = { 'mu-call-scope-id': service_config.MU_CALL_SCOPE_ID_INITIAL_SYNC };
     }
 
-    let publicationEndpoint = _config.PUBLICATION_MU_AUTH_ENDPOINT;
-    if(_config.SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+    let publicationEndpoint = service_config.PUBLICATION_MU_AUTH_ENDPOINT;
+    if(service_config.SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
       console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
-      publicationEndpoint = _config.PUBLICATION_VIRTUOSO_ENDPOINT;
+      publicationEndpoint = service_config.PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
     if(accumulatedDiffs.deletes.length){
       const deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await batchedUpdate(_config, deletes,
-                          _config.PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, deletes,
+                          service_config.PUBLICATION_GRAPH,
                           'DELETE',
                           500,
-                          _config.HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.HEALING_PATCH_GRAPH_BATCH_SIZE,
                           extraHeaders,
                           publicationEndpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-      await createResultsContainer(_config, task, deletes, _config.REMOVAL_CONTAINER, 'removed-triples.ttl');
+      await createResultsContainer(service_config, task, deletes, service_config.REMOVAL_CONTAINER, 'removed-triples.ttl');
     }
 
     if(accumulatedDiffs.inserts.length){
       const inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await batchedUpdate(_config, inserts,
-                          _config.PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, inserts,
+                          service_config.PUBLICATION_GRAPH,
                           'INSERT',
                           500,
-                          _config.HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.HEALING_PATCH_GRAPH_BATCH_SIZE,
                           extraHeaders,
                           publicationEndpoint
                          );
-      await createResultsContainer(_config, task, inserts, _config.INSERTION_CONTAINER, 'inserted-triples.ttl');
+      await createResultsContainer(service_config, task, inserts, service_config.INSERTION_CONTAINER, 'inserted-triples.ttl');
     }
 
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
     return {
-             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(_config, t.originalFormat)),
-             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(_config, t.originalFormat))
+             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(service_config, t.originalFormat)),
+             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(service_config, t.originalFormat))
            };
   }
   catch(e){
@@ -115,25 +115,25 @@ function groupPathToConceptSchemePerProperty(config){
   return result;
 }
 
-async function createResultsContainer( _config, task, nTriples, subject, fileName ){
+async function createResultsContainer(service_config, task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
-  const turtleFile = await writeTtlFile(_config.REPORTING_FILES_GRAPH || task.graph, nTriples.join('\n'), fileName);
+  const turtleFile = await writeTtlFile(service_config.REPORTING_FILES_GRAPH || task.graph, nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
 /*
  * Gets the triples for a property, which are considered 'Ground Truth'
  */
-async function getSourceTriples( _config, _export_config, property, propertyMap, conceptSchemeUri ){
+async function getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri ){
   let sourceTriples = [];
   for(const config of propertyMap[property]){
-    const scopedSourceTriples = await getScopedSourceTriples(_config,
+    const scopedSourceTriples = await getScopedSourceTriples(service_config,
                                                              config,
                                                              property,
                                                              conceptSchemeUri,
-                                                             _config.PUBLICATION_GRAPH,
-                                                             _export_config);
+                                                             service_config.PUBLICATION_GRAPH,
+                                                             service_export_config);
 
     const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
     sourceTriples = [ ...sourceTriples, ...diffs.inserts ];
@@ -145,7 +145,7 @@ async function getSourceTriples( _config, _export_config, property, propertyMap,
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
-async function getPublicationTriples(_config, property, publicationGraph){
+async function getPublicationTriples(service_config, property, publicationGraph){
   const selectFromPublicationGraph = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
@@ -157,7 +157,7 @@ async function getPublicationTriples(_config, property, publicationGraph){
   `;
 
   //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = _config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? _config.PUBLICATION_VIRTUOSO_ENDPOINT : _config.PUBLICATION_MU_AUTH_ENDPOINT;
+  const endpoint = service_config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? service_config.PUBLICATION_VIRTUOSO_ENDPOINT : service_config.PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);
@@ -167,7 +167,7 @@ async function getPublicationTriples(_config, property, publicationGraph){
  * Gets the source triples for a property and a pathToConceptScheme from the database,
  * for all graphs except the ones exclusively residing in the publication graph
  */
-async function getScopedSourceTriples( _config, config, property, conceptSchemeUri, publicationGraph, exportConfig ){
+async function getScopedSourceTriples(service_config, config, property, conceptSchemeUri, publicationGraph, exportConfig ){
   const { additionalFilter, pathToConceptScheme, graphsFilter, type, strictTypeExport } = config;
 
   let pathToConceptSchemeString = '';
@@ -216,7 +216,7 @@ async function getScopedSourceTriples( _config, config, property, conceptSchemeU
   `;
 
   //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = _config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? _config.VIRTUOSO_ENDPOINT : _config.MU_AUTH_ENDPOINT;
+  const endpoint = service_config.USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? service_config.VIRTUOSO_ENDPOINT : service_config.MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromDatabase, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);

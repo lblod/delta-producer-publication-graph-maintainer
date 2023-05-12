@@ -8,11 +8,11 @@ import { appendPublicationGraph } from '../utils';
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
-export async function updatePublicationGraph( _config, _export_config, deltaPayload ){
+export async function updatePublicationGraph(service_config, service_export_config, deltaPayload ){
   try {
-    let delta = await produceDelta(_config, _export_config, deltaPayload);
+    let delta = await produceDelta(service_config, service_export_config, deltaPayload);
     //To remove unnecessary deltas, we filter them out.
-    const actualchanges = await filterActualChangesToPublicationGraph(_config, delta);
+    const actualchanges = await filterActualChangesToPublicationGraph(service_config, delta);
 
     const deletes = chain(actualchanges)
           .map(c => c.deletes)
@@ -25,41 +25,41 @@ export async function updatePublicationGraph( _config, _export_config, deltaPayl
           .value();
 
     if(deletes.length){
-      await batchedUpdate(_config, deletes.map(_config, t => serializeTriple(t)),
-                          _config.PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, deletes.map(service_config, t => serializeTriple(t)),
+                          service_config.PUBLICATION_GRAPH,
                           'DELETE',
-                          _config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                          service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
-                          { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
-                          _config.PUBLICATION_MU_AUTH_ENDPOINT
+                          { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                          service_config.PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
     if(inserts.length){
-      await batchedUpdate(_config, inserts.map(t => serializeTriple(t)),
-                          _config.PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
+                          service_config.PUBLICATION_GRAPH,
                           'INSERT',
-                          _config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                          service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
                           100,
-                          { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
-                          _config.PUBLICATION_MU_AUTH_ENDPOINT
+                          { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                          service_config.PUBLICATION_MU_AUTH_ENDPOINT
                          );
     }
 
     return {
-      inserts: inserts.map(t => appendPublicationGraph(_config, t)),
-      deletes: deletes.map(t => appendPublicationGraph(_config, t))
+      inserts: inserts.map(t => appendPublicationGraph(service_config, t)),
+      deletes: deletes.map(t => appendPublicationGraph(service_config, t))
     };
   }
   catch(error){
     const errorMsg = `Error while processing delta ${error}`;
     console.error(errorMsg);
-    await storeError(_config, errorMsg);
+    await storeError(service_config, errorMsg);
     throw error;
   }
 }
 
-async function filterActualChangesToPublicationGraph(_config, delta){
+async function filterActualChangesToPublicationGraph(service_config, delta){
   // We need to fold the changeset to compare the effective wanted changes against the publication graph.
   // Suppose:
   //   - delta: [ deletes: s1, insert: s1]
@@ -68,26 +68,26 @@ async function filterActualChangesToPublicationGraph(_config, delta){
   // Comparing the atomic delete from delta directly to the target graph, to conclude it is an effective change yields
   // wrong results, because the insert:s1 won't be considered an effective insert.
   // I.e. we end up with delta: [ deletes: s1 ] to execute against the publication graph.
-  const dbEndpoint = _config.SKIP_MU_AUTH_DELTA_FOLDING ? _config.PUBLICATION_VIRTUOSO_ENDPOINT : _config.PUBLICATION_MU_AUTH_ENDPOINT;
-  const foldedDelta = await foldChangeSet(_config, delta, { dbEndpoint });
+  const dbEndpoint = service_config.SKIP_MU_AUTH_DELTA_FOLDING ? service_config.PUBLICATION_VIRTUOSO_ENDPOINT : service_config.PUBLICATION_MU_AUTH_ENDPOINT;
+  const foldedDelta = await foldChangeSet(service_config, delta, { dbEndpoint });
   const foldedDeletes = chain(foldedDelta).map(c => c.deletes).flatten().value();
   const foldedInserts = chain(foldedDelta).map(c => c.inserts).flatten().value();
   const actualDeletes = [];
 
   //From this folded information, we now check whether the publication graph needs an update
   for(const triple of foldedDeletes){
-    if((await tripleExists(triple, _config.PUBLICATION_GRAPH, { dbEndpoint })) ){
+    if((await tripleExists(triple, service_config.PUBLICATION_GRAPH, { dbEndpoint })) ){
       actualDeletes.push(triple);
-      await new Promise(r => setTimeout(r, _config.UPDATE_PUBLICATION_GRAPH_SLEEP)); //performance consideration
+      await new Promise(r => setTimeout(r, service_config.UPDATE_PUBLICATION_GRAPH_SLEEP)); //performance consideration
     }
   }
 
   const actualInserts = [];
 
   for(const triple of foldedInserts){
-    if( !(await tripleExists(triple, _config.PUBLICATION_GRAPH, { dbEndpoint })) ){
+    if( !(await tripleExists(triple, service_config.PUBLICATION_GRAPH, { dbEndpoint })) ){
       actualInserts.push(triple);
-      await new Promise(r => setTimeout(r, _config.UPDATE_PUBLICATION_GRAPH_SLEEP));
+      await new Promise(r => setTimeout(r, service_config.UPDATE_PUBLICATION_GRAPH_SLEEP));
     }
   }
 
@@ -114,7 +114,7 @@ async function tripleExists( tripleObject, graph, config ){
   return result.boolean;
 }
 
-async function foldChangeSet( _config, delta, config ){
+async function foldChangeSet(service_config, delta, config ){
   //Note: we don't use utils/diffNTriples because the lexical notation from deltas is not consistent
   // e.g. 2021-05-04T00:00:00Z vs 2021-05-04T00:00:000Z
   // Therefore, we use the database, that works in logical equivalents.
@@ -126,20 +126,20 @@ async function foldChangeSet( _config, delta, config ){
   const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
   try {
 
-    await batchedUpdate(_config, deletes.map(t => serializeTriple(t)),
+    await batchedUpdate(service_config, deletes.map(t => serializeTriple(t)),
                         tempDeleteGraph,
                         'INSERT',
-                        _config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                        service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
-                        { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
                         config.dbEndpoint
                        );
-    await batchedUpdate(_config, inserts.map(t => serializeTriple(t)),
+    await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
                         tempInsertGraph,
                         'INSERT',
-                        _config.UPDATE_PUBLICATION_GRAPH_SLEEP,
+                        service_config.UPDATE_PUBLICATION_GRAPH_SLEEP,
                         100,
-                        { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+                        { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
                         config.dbEndpoint
                        );
 
@@ -158,8 +158,8 @@ async function foldChangeSet( _config, delta, config ){
       `;
     };
 
-    const foldedDeletes = await batchedQuery(_config, queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
-    const foldedInserts = await batchedQuery(_config, queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
+    const foldedDeletes = await batchedQuery(service_config, queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
+    const foldedInserts = await batchedQuery(service_config, queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
     return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
   }
   finally {
@@ -179,10 +179,10 @@ async function foldChangeSet( _config, delta, config ){
       `;
     };
 
-    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+    await update(cleanUpQuery(tempDeleteGraph), { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
                  { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
                 );
-    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  _config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
+    await update(cleanUpQuery(tempInsertGraph), { 'mu-call-scope-id':  service_config.MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE },
                  { sparqlEndpoint: config.dbEndpoint, mayRetry: true }
                 );
   }
