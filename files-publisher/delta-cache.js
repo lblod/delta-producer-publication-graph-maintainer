@@ -3,7 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
-import {CACHE_CHUNK_ARRAY, CACHE_CHUNK_STATEMENT, prettyPrintDiffJson} from "../env-config";
+import {CACHE_CHUNK_ARRAY, CACHE_CHUNK_STATEMENT, PRETTY_PRINT_DIFF_JSON} from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -43,7 +43,7 @@ export default class DeltaCache {
           const filename = `delta-${new Date().toISOString()}-${index}.json`;
           const filepath = `${outputDirectory}/${filename}`;
 
-          if(prettyPrintDiffJson){
+          if(PRETTY_PRINT_DIFF_JSON){
             await fs.writeFile(filepath, JSON.stringify( entry, null, 2 ));
           }
           else {

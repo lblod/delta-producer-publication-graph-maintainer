@@ -197,7 +197,7 @@ The proporties are:
         "initialPublicationGraphSyncJobOperation": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initialPublicationGraphSyncing/besluiten",
         "jobsGraph": "http://mu.semte.ch/graphs/harvesting",
         "loginPath": "/besluiten/login",
-        "prettyPrintDiffJson": "true",
+        "PRETTY_PRINT_DIFF_JSON": "true",
         "publicationGraph": "http://redpencil.data.gift/id/deltas/producer/lblod-harvester-besluiten-producer",
         "publisherUri": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
         "queuePollInterval": 3000,
@@ -216,7 +216,7 @@ The following enviroment variables can be optionally configured:
 * `MU_AUTH_ENDPOINT (default: http://database:8890/sparql)`: Location of the mu-auth endpoint
 * `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Location of the virtuoso endpoint.
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
-* `prettyPrintDiffJson (default: true)`: Whether to pretty print the diff json
+* `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `KEY (default: '')`: The login key
 * `ACCOUNT (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
 * `ACCOUNT_GRAPH (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph

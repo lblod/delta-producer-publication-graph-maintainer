@@ -7,7 +7,7 @@ export const MU_AUTH_ENDPOINT = process.MU_AUTH_ENDPOINT || 'http://database:889
 export const PUBLICATION_VIRTUOSO_ENDPOINT = process.env.PUBLICATION_VIRTUOSO_ENDPOINT || VIRTUOSO_ENDPOINT;
 export const PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
 //FILES PUBLISHER
-export const prettyPrintDiffJson = process.env.prettyPrintDiffJson === 'true';
+export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
 //LOGIN
 export const KEY = process.env.KEY || '';
 export const ACCOUNT = process.env.ACCOUNT || 'http://services.lblod.info/diff-consumer/account';
