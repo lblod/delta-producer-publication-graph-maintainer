@@ -182,6 +182,9 @@ The proporties are:
 * `deltaPath`: The path where the delta messages arrive
 * `filesPath`: The path where the files are served
 * `loginPath`: The login path
+* `key (default: '')`: The login key
+* `account (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
+* `account_graph (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph
 * E.g.:
 
 ```json
@@ -217,9 +220,6 @@ The following enviroment variables can be optionally configured:
 * `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Location of the virtuoso endpoint.
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
-* `KEY (default: '')`: The login key
-* `ACCOUNT (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
-* `ACCOUNT_GRAPH (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
 
 ### API
@@ -286,12 +286,13 @@ It might be this feature gets extended, i.e. more serialization formats, or comp
 Published data may be wrapped up in an authorization layer, i.e. the delta files will only available to agents with access.
 It relies on mu-auth to follow the authorization scheme.
 The following configuration needs to be added. Suppose the deltas to share are about 'persons-sensitive'.
-#### docker-compose.yml
-```
-  # (...)
-  KEY: "shared secret key between consumer and producer"
-  ACCOUNT: "http://an/account/enabling/acces/to/delta-files-graph"
-  filesGraph: "http://redpencil.data.gift/id/deltas/producer/persons-sensitive"
+#### services.json
+```json
+{
+  "key": "shared secret key between consumer and producer",
+  "account": "http://an/account/enabling/acces/to/delta-files-graph",
+  "filesGraph": "http://redpencil.data.gift/id/deltas/producer/persons-sensitive"
+}
 ```
 #### dispatcher
 ```

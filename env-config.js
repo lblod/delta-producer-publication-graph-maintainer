@@ -8,10 +8,6 @@ export const PUBLICATION_VIRTUOSO_ENDPOINT = process.env.PUBLICATION_VIRTUOSO_EN
 export const PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
 //FILES PUBLISHER
 export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
-//LOGIN
-export const KEY = process.env.KEY || '';
-export const ACCOUNT = process.env.ACCOUNT || 'http://services.lblod.info/diff-consumer/account';
-export const ACCOUNT_GRAPH = process.env.ACCOUNT_GRAPH || 'http://mu.semte.ch/graphs/diff-producer/login';
 export const CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
 export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json'
@@ -114,5 +110,9 @@ export class Config {
         if (!configData.loginPath)
             throw `Expected 'loginPath' should be provided.`;
         this.loginPath = configData.loginPath;
+        //LOGIN
+        this.key = process.env.key || '';
+        this.account = process.env.account || 'http://services.lblod.info/diff-consumer/account';
+        this.account_graph = process.env.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
     }
 }

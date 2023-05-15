@@ -2,9 +2,7 @@ import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import {
-  ACCOUNT,
-  ACCOUNT_GRAPH,
-  Config, CONFIG_SERVICES_JSON_PATH, KEY, LOG_INCOMING_DELTA
+  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
 } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeHealingTask } from './jobs/healing/main';
@@ -117,7 +115,7 @@ for (const name in services){
     try {
 
       // 0. To avoid false sense of security, login only makes sense if accepted key is configured
-      if (!KEY) {
+      if (!service_config.key) {
         throw "No key configured in service.";
       }
 
@@ -125,7 +123,7 @@ for (const name in services){
       const sessionUri = req.get('mu-session-id');
 
       // 2. validate credentials
-      if (req.get("key") !== KEY) {
+      if (req.get("key") !== service_config.key) {
         throw "Key does not match";
       }
 
@@ -133,8 +131,8 @@ for (const name in services){
       updateSudo(`
       PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
       INSERT DATA {
-        GRAPH ${sparqlEscapeUri(ACCOUNT_GRAPH)} {
-          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(ACCOUNT)}.
+        GRAPH ${sparqlEscapeUri(service_config.account_graph)} {
+          ${sparqlEscapeUri(sessionUri)} muAccount:account ${sparqlEscapeUri(service_config.account)}.
         }
       }`);
 
