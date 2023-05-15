@@ -200,7 +200,6 @@ The proporties are:
         "initialPublicationGraphSyncJobOperation": "http://redpencil.data.gift/id/jobs/concept/JobOperation/deltas/initialPublicationGraphSyncing/besluiten",
         "jobsGraph": "http://mu.semte.ch/graphs/harvesting",
         "loginPath": "/besluiten/login",
-        "PRETTY_PRINT_DIFF_JSON": "true",
         "publicationGraph": "http://redpencil.data.gift/id/deltas/producer/lblod-harvester-besluiten-producer",
         "publisherUri": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
         "queuePollInterval": 3000,
