@@ -26,10 +26,7 @@ export async function executeHealingTask(){
       const task = await loadTask(syncTaskUri || healingTaskUri);
       try {
         await updateTaskStatus(task, STATUS_BUSY);
-        delta = await runHealingTask(task, syncTaskUri ? true : false);
-        if(SERVE_DELTA_FILES && healingTaskUri){
-          await publishDeltaFiles(delta);
-        }
+        delta = await runHealingTask(task, syncTaskUri ? true : false, SERVE_DELTA_FILES && healingTaskUri);
         await updateTaskStatus(task, STATUS_SUCCESS);
       }
       catch(e) {
