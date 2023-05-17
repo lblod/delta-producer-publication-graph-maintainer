@@ -1,49 +1,47 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { uniq } from 'lodash';
 import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
-import {
-    HEALING_PATCH_GRAPH_BATCH_SIZE,
-    INSERTION_CONTAINER, MU_AUTH_ENDPOINT, MU_CALL_SCOPE_ID_INITIAL_SYNC,
-    MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PUBLICATION_GRAPH, PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT, REMOVAL_CONTAINER,
-    REPORTING_FILES_GRAPH, SKIP_MU_AUTH_INITIAL_SYNC, USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS, VIRTUOSO_ENDPOINT
-} from '../../env-config';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
-import { batchedUpdate, loadConfiguration, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
+import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
 import { appendPublicationGraph } from '../utils';
+import {
+  MU_AUTH_ENDPOINT,
+  PUBLICATION_MU_AUTH_ENDPOINT,
+  PUBLICATION_VIRTUOSO_ENDPOINT,
+  VIRTUOSO_ENDPOINT
+} from "../../env-config";
 
 
-const EXPORT_CONFIG = loadConfiguration();
-
-export async function runHealingTask( task, isInitialSync ) {
+export async function runHealingTask(service_config, service_export_config, task, isInitialSync) {
   try {
-    const conceptSchemeUri = EXPORT_CONFIG.conceptScheme;
+    const conceptSchemeUri = service_export_config.conceptScheme;
     const started = new Date();
 
     console.log(`starting at ${started}`);
 
-    const propertyMap = groupPathToConceptSchemePerProperty(EXPORT_CONFIG.export);
+    const propertyMap = groupPathToConceptSchemePerProperty(service_export_config.export);
 
     let accumulatedDiffs = { inserts: [], deletes: [] };
 
     //Some explanation:
     // The triples to push to the publication graph should be equal to
-    // - all triples whose ?s link to a the conceptscheme (through pathToConceptScheme)
+    // - all triples whose ?s link to the concept scheme (through pathToConceptScheme)
     //   (note if no path defined, then this condition returns true) AND
-    // - whose ?p match the properties defined in the EXPORT_CONFIG AND
+    // - whose ?p match the properties defined in the service_export_config AND
     // - who match any of the configured types AND
-    // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predfined graphs)
+    // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predefined graphs)
     //
-    // In the first step, we build this set (say set A), looking for triples matching the above conditions for a specic ?p.
+    // In the first step, we build this set (say set A), looking for triples matching the above conditions for a specific ?p.
     // (For performance reasons, we split it up.)
     // In the second step we fetch all triples matching ?p in the publication graph. (set B)
     //
-    // With this result, we have a complete picture for a specific ?p to caclulating the difference.
-    // The addtions are A\B, and removals are B\A
+    // With this result, we have a complete picture for a specific ?p to calculating the difference.
+    // The additions are A\B, and removals are B\A
     for(const property of Object.keys(propertyMap)){
 
-      const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
-      const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
+      const sourceTriples = await getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri);
+      const publicationGraphTriples = await getPublicationTriples(service_config, property, service_config.publicationGraph);
 
       console.log('Calculating diffs, this may take a while');
       const diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
@@ -53,49 +51,49 @@ export async function runHealingTask( task, isInitialSync ) {
 
     }
 
-    let extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE };
+    let extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdPublicationGraphMaintenance };
     if(isInitialSync){
-      extraHeaders = { 'mu-call-scope-id': MU_CALL_SCOPE_ID_INITIAL_SYNC };
+      extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdInitialSync };
     }
 
     let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
-    if(SKIP_MU_AUTH_INITIAL_SYNC && isInitialSync){
+    if(service_config.skipMuAuthInitialSync && isInitialSync){
       console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
     if(accumulatedDiffs.deletes.length){
       const deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await batchedUpdate(deletes,
-                          PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, deletes,
+                          service_config.publicationGraph,
                           'DELETE',
                           500,
-                          HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.healingPatchGraphBatchSize,
                           extraHeaders,
                           publicationEndpoint
                          );
       //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-      await createResultsContainer(task, deletes, REMOVAL_CONTAINER, 'removed-triples.ttl');
+      await createResultsContainer(service_config, task, deletes, service_config.removalContainer, 'removed-triples.ttl');
     }
 
     if(accumulatedDiffs.inserts.length){
       const inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await batchedUpdate(inserts,
-                          PUBLICATION_GRAPH,
+      await batchedUpdate(service_config, inserts,
+                          service_config.publicationGraph,
                           'INSERT',
                           500,
-                          HEALING_PATCH_GRAPH_BATCH_SIZE,
+                          service_config.healingPatchGraphBatchSize,
                           extraHeaders,
                           publicationEndpoint
                          );
-      await createResultsContainer(task, inserts, INSERTION_CONTAINER, 'inserted-triples.ttl');
+      await createResultsContainer(service_config, task, inserts, service_config.insertionContainer, 'inserted-triples.ttl');
     }
 
     console.log(`started at ${started}`);
     console.log(`ending at ${new Date()}`);
     return {
-             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(t.originalFormat)),
-             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(t.originalFormat))
+             inserts: accumulatedDiffs.inserts.map(t => appendPublicationGraph(service_config, t.originalFormat)),
+             deletes: accumulatedDiffs.deletes.map(t => appendPublicationGraph(service_config, t.originalFormat))
            };
   }
   catch(e){
@@ -123,24 +121,25 @@ function groupPathToConceptSchemePerProperty(config){
   return result;
 }
 
-async function createResultsContainer( task, nTriples, subject, fileName ){
+async function createResultsContainer(service_config, task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
-  const turtleFile = await writeTtlFile(REPORTING_FILES_GRAPH || task.graph, nTriples.join('\n'), fileName);
+  const turtleFile = await writeTtlFile(service_config.reportingFilesGraph || task.graph, nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
 /*
  * Gets the triples for a property, which are considered 'Ground Truth'
  */
-async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
+async function getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri ){
   let sourceTriples = [];
   for(const config of propertyMap[property]){
-    const scopedSourceTriples = await getScopedSourceTriples(config,
+    const scopedSourceTriples = await getScopedSourceTriples(service_config,
+                                                             config,
                                                              property,
                                                              conceptSchemeUri,
-                                                             PUBLICATION_GRAPH,
-                                                             EXPORT_CONFIG);
+                                                             service_config.publicationGraph,
+                                                             service_export_config);
 
     const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
     sourceTriples = [ ...sourceTriples, ...diffs.inserts ];
@@ -152,7 +151,7 @@ async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
-async function getPublicationTriples(property, publicationGraph){
+async function getPublicationTriples(service_config, property, publicationGraph){
   const selectFromPublicationGraph = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
@@ -163,8 +162,8 @@ async function getPublicationTriples(property, publicationGraph){
      }
   `;
 
-  //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
+  //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
+  const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);
@@ -174,7 +173,7 @@ async function getPublicationTriples(property, publicationGraph){
  * Gets the source triples for a property and a pathToConceptScheme from the database,
  * for all graphs except the ones exclusively residing in the publication graph
  */
-async function getScopedSourceTriples( config, property, conceptSchemeUri, publicationGraph, exportConfig ){
+async function getScopedSourceTriples(service_config, config, property, conceptSchemeUri, publicationGraph, exportConfig ){
   const { additionalFilter, pathToConceptScheme, graphsFilter, type, strictTypeExport } = config;
 
   let pathToConceptSchemeString = '';
@@ -222,8 +221,8 @@ async function getScopedSourceTriples( config, property, conceptSchemeUri, publi
      }
   `;
 
-  //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
+  const endpoint = service_config.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromDatabase, {}, { sparqlEndpoint: endpoint, mayRetry: true });
   return reformatQueryResult(result);

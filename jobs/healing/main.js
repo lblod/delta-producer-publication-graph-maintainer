@@ -1,40 +1,34 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { sparqlEscapeUri } from 'mu';
-import {
-    HEALING_JOB_OPERATION,
-    HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION,
-    INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, JOB_TYPE, PREFIXES, SERVE_DELTA_FILES, STATUS_BUSY,
-    STATUS_FAILED, STATUS_SCHEDULED, STATUS_SUCCESS, TASK_TYPE
-} from '../../env-config';
 import { publishDeltaFiles } from '../../files-publisher/main';
 import { appendTaskError, loadTask, updateTaskStatus } from '../../lib/task';
 import { parseResult, storeError } from '../../lib/utils';
 import { runHealingTask } from './pipeline-healing';
 
-export async function executeHealingTask(){
+export async function executeHealingTask(service_config, service_export_config) {
 
   try {
     //TODO: extra checks are required to make sure the system remains in consistent state
-    // (this responsability might move to background scheduler)
-    //so, e.g. only one scheduled task for jobs of interest, only one job of intersest a time etc..
-    const syncTaskUri = await getTaskUri(INITIAL_PUBLICATION_GRAPH_SYNC_JOB_OPERATION, INITIAL_PUBLICATION_GRAPH_SYNC_TASK_OPERATION, STATUS_SCHEDULED);
-    const healingTaskUri = await getTaskUri(HEALING_JOB_OPERATION, HEALING_PATCH_PUBLICATION_GRAPH_TASK_OPERATION, STATUS_SCHEDULED);
+    // (this responsibility might move to background scheduler)
+    //so, e.g. only one scheduled task for jobs of interest, only one job of interest a time etc..
+    const syncTaskUri = await getTaskUri(service_config, service_config.initialPublicationGraphSyncJobOperation, service_config.initialPublicationGraphSyncTaskOperation, service_config.statusScheduled);
+    const healingTaskUri = await getTaskUri(service_config, service_config.healingJobOperation, service_config.healingPatchPublicationGraphTaskOperation, service_config.statusScheduled);
 
     let delta = { inserts: [], deletes: [] };
 
     if(syncTaskUri || healingTaskUri) {
-      const task = await loadTask(syncTaskUri || healingTaskUri);
+      const task = await loadTask(service_config, syncTaskUri || healingTaskUri);
       try {
-        await updateTaskStatus(task, STATUS_BUSY);
-        delta = await runHealingTask(task, syncTaskUri ? true : false);
-        if(SERVE_DELTA_FILES && healingTaskUri){
-          await publishDeltaFiles(delta);
+        await updateTaskStatus(task, service_config.statusBusy);
+        delta = await runHealingTask(service_config, service_export_config, task, syncTaskUri ? true : false);
+        if(service_config.serveDeltaFiles && healingTaskUri){
+          await publishDeltaFiles(service_config, delta);
         }
-        await updateTaskStatus(task, STATUS_SUCCESS);
+        await updateTaskStatus(task, service_config.statusSuccess);
       }
       catch(e) {
-        await appendTaskError(task, e.message || e);
-        await updateTaskStatus(task, STATUS_FAILED);
+        await appendTaskError(service_config, task, e.message || e);
+        await updateTaskStatus(task, service_config.statusFailed);
         throw e;
       }
     }
@@ -43,23 +37,23 @@ export async function executeHealingTask(){
   }
   catch(e){
     console.error(e);
-    await storeError(e);
+    await storeError(service_config, e);
     throw e;
   }
 }
 
 //TODO: refactor this to a more generic task filter in lib/task.js
-async function getTaskUri( jobOperationUri, taskOperationUri, statusUri ){
+async function getTaskUri(service_config, jobOperationUri, taskOperationUri, statusUri ){
   const queryString = `
-    ${PREFIXES}
+    ${service_config.prefixes}
 
     SELECT DISTINCT ?task WHERE {
       GRAPH ?g {
-          ?job a ${sparqlEscapeUri(JOB_TYPE)};
+          ?job a ${sparqlEscapeUri(service_config.jobType)};
             task:operation ${sparqlEscapeUri(jobOperationUri)}.
 
           ?task dct:isPartOf ?job;
-            a ${sparqlEscapeUri(TASK_TYPE)};
+            a ${sparqlEscapeUri(service_config.taskType)};
             task:operation ${sparqlEscapeUri(taskOperationUri)};
             adms:status ${sparqlEscapeUri(statusUri)}.
        }
