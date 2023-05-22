@@ -30,7 +30,8 @@ import {publishDeltaFiles} from "../../files-publisher/main";
 const EXPORT_CONFIG = loadConfiguration();
 const optionsNoOutput = {
   encoding: 'utf-8',
-  stdio: ['ignore', 'ignore', 'ignore']
+  stdio: ['ignore', 'ignore', 'ignore'],
+  shell: '/bin/bash'
 }
 
 export async function runHealingTask( task, isInitialSync, publishDelta ) {
@@ -78,15 +79,13 @@ export async function runHealingTask( task, isInitialSync, publishDelta ) {
     // With this result, we have a complete picture for a specific ?p to caclulating the difference.
     // The addtions are A\B, and removals are B\A
     for(const property of Object.keys(propertyMap)){
-
-      const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
       const publicationGraphTriples = await getPublicationTriples(property, PUBLICATION_GRAPH);
+      const sourceTriples = await getSourceTriples(property, propertyMap, conceptSchemeUri);
 
       console.log(`Calculating diffs for property ${property}, this may take a while`);
       let diffs;
       if (USE_FILE_DIFF) {
-        let publicationGraphTriplesFile = arrayToFile(publicationGraphTriples, tmp.fileSync());
-        let fileDiff = diffFiles(sourceTriples, publicationGraphTriplesFile);
+        let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
         let newInserts = tmp.fileSync()
         execSync(`cat ${accumulatedDiffs.inserts.name} ${fileDiff.inserts.name} | tee ${newInserts.name}`, optionsNoOutput)
         fileDiff.inserts.removeCallback()
@@ -99,7 +98,6 @@ export async function runHealingTask( task, isInitialSync, publishDelta ) {
         fileDiff.deletes.removeCallback()
         accumulatedDiffs.deletes = newDeletes
 
-        publicationGraphTriplesFile.removeCallback();
         sourceTriples.removeCallback();
       } else {
         diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
@@ -265,7 +263,69 @@ async function getSourceTriples( property, propertyMap, conceptSchemeUri ){
  * Gets the triples residing in the publication graph, for a specific property
  */
 async function getPublicationTriples(property, publicationGraph){
-  const selectFromPublicationGraph = `
+  console.log(`DEBUG: Publication triples using file? ${USE_FILE_DIFF}`)
+  if (USE_FILE_DIFF) {
+    // when using file-based diff, query the database using isql to a file
+    let username = "dba", password = "dba";
+    // function to create serialized triple from the subject, predicate, object and possibly its type and language
+    function generateTripleFromParts(parts){
+      let subject = parts[0]
+      let predicate = parts[1]
+      let object = parts[2]
+      let type = parts[3]
+      let lang = parts[4]
+
+      let objectType = 'uri';
+      if (type === "http://www.w3.org/2001/XMLSchema#string") {
+        objectType = "literal"
+      } else if (type){
+        objectType = "typed-literal"
+      }
+      return {
+        nTriple: serializeTriple({
+          subject: {
+            type: "uri", value: subject
+          },
+          predicate: {
+            type: "uri", value: predicate
+          },
+          object: {
+            type: objectType, datatype: type, lang: lang, value: object
+          }
+        })
+      }
+    }
+    let inputFile = tmp.fileSync();
+    execSync(`isql Virtuoso ${username} ${password} <<< "sparql select ?blank ?s ?p ?o ?o_type ?o_lang where { graph ${sparqlEscapeUri(publicationGraph)} {?s ?p ?o.} bind(${sparqlEscapeUri(property)} as ?p) bind(datatype(?o) as ?o_type) bind(lang(?o) as ?o_lang) bind('' as ?blank)}" -b -L1000000 -x8 | tee ${inputFile.name}`, optionsNoOutput)
+    let rl = new Readlines(inputFile.name)
+    let outputFile = tmp.fileSync();
+    let parts = `${rl.next()}`.split("\x08");
+    let line, tripleParts = parts.slice(1), triples = [];
+    while((line = rl.next())){
+      line = `${line}`
+      let parts = line.split("\x08")
+      if (line[0] === "\x08" && tripleParts.length === 5) {
+        triples.push(generateTripleFromParts(tripleParts, outputFile))
+        tripleParts = parts.slice(1)
+      } else {
+        tripleParts[tripleParts.length-1] += parts[0]
+        if (parts.length > 1){
+          tripleParts = [...tripleParts, ...parts.slice(1)]
+        }
+      }
+      // only write to the outputFile with a bunch of triples
+      let numberOfTriplesInMemory = 1000;
+      if (triples.length === numberOfTriplesInMemory){
+        arrayToFile(triples, outputFile);
+        triples = [];
+      }
+    }
+    // write the remaining triples to the outputFile
+    arrayToFile(triples, outputFile);
+    inputFile.removeCallback()
+    return outputFile;
+  } else {
+    const selectFromPublicationGraph = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
 
@@ -275,11 +335,12 @@ async function getPublicationTriples(property, publicationGraph){
      }
   `;
 
-  //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
-  console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
-  return reformatQueryResult(result);
+    //Note: this might explose memory, but now, a paginated fetch is extremely slow. (because sorting)
+    const endpoint = USE_VIRTUOSO_FOR_EXPENSIVE_SELECTS ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
+    console.log(`Hitting database ${endpoint} with expensive query`);
+    const result = await query(selectFromPublicationGraph, {}, {sparqlEndpoint: endpoint, mayRetry: true});
+    return reformatQueryResult(result);
+  }
 }
 
 /*
