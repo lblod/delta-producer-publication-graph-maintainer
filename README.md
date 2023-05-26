@@ -220,6 +220,8 @@ The following enviroment variables can be optionally configured:
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
+* `VIRTUOSO_USERNAME (default: "dba")`: The username to use when querying virtuoso using `isql`
+* `VIRTUOSO_PASSWORD (default: "dba")`: The password to use when querying virtuoso using `isql`
 
 ### API
 #### POST /delta

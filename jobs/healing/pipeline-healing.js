@@ -8,7 +8,7 @@ import {
   MU_AUTH_ENDPOINT,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
-  VIRTUOSO_ENDPOINT
+  VIRTUOSO_ENDPOINT, VIRTUOSO_PASSWORD, VIRTUOSO_USERNAME
 } from "../../env-config";
 import {publishDeltaFiles} from "../../files-publisher/main";
 
@@ -79,11 +79,12 @@ export async function runHealingTask(service_config, service_export_config, task
 
         let newDeletes = tmp.fileSync()
         execSync(`cat ${accumulatedDiffs.deletes.name} ${fileDiff.deletes.name} | tee ${newDeletes.name}`, optionsNoOutput)
-        accumulatedDiffs.deletes.removeCallback()
         fileDiff.deletes.removeCallback()
+        accumulatedDiffs.deletes.removeCallback()
         accumulatedDiffs.deletes = newDeletes
 
         sourceTriples.removeCallback();
+        publicationGraphTriples.removeCallback();
       } else {
         let diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
         accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
@@ -118,10 +119,10 @@ export async function runHealingTask(service_config, service_export_config, task
           part++;
         }
       }
-      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, REMOVAL_CONTAINER);
+      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
     } else {
       let deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', REMOVAL_CONTAINER);
+      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', service_config.removalContainer);
     }
 
     if (service_config.useFileDiff) {
@@ -134,15 +135,15 @@ export async function runHealingTask(service_config, service_export_config, task
         inserts.push(JSON.parse(line).nTriple)
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
-          await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, INSERTION_CONTAINER);
+          await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
           inserts = [];
           part++;
         }
       }
-      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, INSERTION_CONTAINER);
+      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
     } else {
       let inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', INSERTION_CONTAINER);
+      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', service_config.insertionContainer);
     }
 
     console.log(`started at ${started}`);
@@ -176,6 +177,9 @@ export async function runHealingTask(service_config, service_export_config, task
       // push the remaining inserts and deletes
       await publishDeltaFiles(service_config, {deletes: deletes, inserts: inserts});
     }
+
+    accumulatedDiffs.inserts.removeCallback()
+    accumulatedDiffs.deletes.removeCallback()
   }
   catch(e){
     console.error(e);
@@ -213,7 +217,12 @@ async function createResultsContainer(service_config, task, nTriples, subject, f
  * Gets the triples for a property, which are considered 'Ground Truth'
  */
 async function getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri ){
-  let sourceTriples = [];
+  let sourceTriples;
+  if (service_config.useFileDiff) {
+    sourceTriples = tmp.fileSync();
+  } else {
+    sourceTriples = []
+  }
   for(const config of propertyMap[property]){
     let scopedSourceTriples = await getScopedSourceTriples(service_config,
                                                              config,
@@ -221,15 +230,16 @@ async function getSourceTriples(service_config, service_export_config, property,
                                                              conceptSchemeUri,
                                                              service_config.publicationGraph,
                                                              service_export_config);
+    console.log(`DEBUG: number of source triples: ${scopedSourceTriples.length}`)
 
     if (service_config.useFileDiff) {
-      scopedSourceTriples = arrayToFile(scopedSourceTriples, tmp.fileSync());
-      const diffs = diffFiles(scopedSourceTriples, sourceTriples);
+      let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
+      const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
       let newSourceTriples = tmp.fileSync();
       execSync(`cat ${sourceTriples.name} ${diffs.name} | tee ${newSourceTriples.name}`, optionsNoOutput)
       sourceTriples.removeCallback();
       sourceTriples = newSourceTriples;
-      scopedSourceTriples.removeCallback();
+      scopedSourceTriplesFile.removeCallback();
     } else {
       const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
       console.log(`DEBUG: FILE BASED DIFF, number of inserts: ${diffs.inserts.length} | number of deletes: ${diffs.deletes.length}`)
@@ -247,7 +257,7 @@ async function getPublicationTriples(service_config, property, publicationGraph)
   console.log(`DEBUG: Publication triples using file? ${service_config.useFileDiff}`)
   if (service_config.useFileDiff) {
     // when using file-based diff, query the database using isql to a file
-    let username = "dba", password = "dba";
+    let username = VIRTUOSO_USERNAME, password = VIRTUOSO_PASSWORD;
     // function to create serialized triple from the subject, predicate, object and possibly its type and language
     function generateTripleFromParts(parts){
       let subject = parts[0]
