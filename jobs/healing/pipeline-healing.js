@@ -86,7 +86,7 @@ export async function runHealingTask(service_config, service_export_config, task
         sourceTriples.removeCallback();
         publicationGraphTriples.removeCallback();
       } else {
-        let diffs = diffTriplesData(sourceTriples, publicationGraphTriples);
+        let diffs = diffTriplesData(service_config, sourceTriples, publicationGraphTriples);
         accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
         accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
       }
@@ -241,8 +241,7 @@ async function getSourceTriples(service_config, service_export_config, property,
       sourceTriples = newSourceTriples;
       scopedSourceTriplesFile.removeCallback();
     } else {
-      const diffs = diffTriplesData(scopedSourceTriples, sourceTriples);
-      console.log(`DEBUG: FILE BASED DIFF, number of inserts: ${diffs.inserts.length} | number of deletes: ${diffs.deletes.length}`)
+      const diffs = diffTriplesData(service_config, scopedSourceTriples, sourceTriples);
       sourceTriples = [ ...sourceTriples, ...diffs.inserts ];
     }
   }
@@ -437,7 +436,7 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
 }
 
 
-function diffTriplesData(target, source) {
+function diffTriplesData(service_config, target, source) {
   //Note: this only works correctly if triples have same lexical notation.
   //So think about it, when copy pasting :-)
 
@@ -446,7 +445,7 @@ function diffTriplesData(target, source) {
     diff.deletes = source;
   } else if (source.length === 0) {
     diff.inserts = target;
-  } else if (USE_FILE_DIFF) {
+  } else if (service_config.useFileDiff) {
     console.log(`DEBUG: FILE BASED DIFF, target size is ${target.length}, source size is ${source.length}`)
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
     let targetFile = arrayToFile(target, tmp.fileSync())
