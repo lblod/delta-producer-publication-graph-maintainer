@@ -3,14 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
-import {
-    FILES_GRAPH,
-    MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE, PREFIXES,
-    PRETTY_PRINT_DIFF_JSON, PUBLISHER_URI,
-    RELATIVE_FILE_PATH,
-    CACHE_CHUNK_STATEMENT,
-    CACHE_CHUNK_ARRAY
-} from '../env-config';
+import {CACHE_CHUNK_ARRAY, CACHE_CHUNK_STATEMENT, PRETTY_PRINT_DIFF_JSON} from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -34,17 +27,17 @@ export default class DeltaCache {
    *
    * @public
   */
-  async generateDeltaFile() {
+  async generateDeltaFile(service_config) {
     if (this.cache.length) {
       const cachedArray = [ ...this.cache ];
       this.cache = [];
 
-      const chunkedArray = chunkCache(cachedArray);
+      const chunkedArray = chunkCache(service_config, cachedArray);
       for(const [ index, entry ] of chunkedArray.entries()) {
         try {
           const folderDate = new Date();
           const subFolder = folderDate.toISOString().split('T')[0];
-          const outputDirectory = `${SHARE_FOLDER}/${RELATIVE_FILE_PATH}/${subFolder}`;
+          const outputDirectory = `${SHARE_FOLDER}/${service_config.relativeFilePath}/${subFolder}`;
           fs.mkdirSync(outputDirectory, { recursive: true });
 
           const filename = `delta-${new Date().toISOString()}-${index}.json`;
@@ -59,11 +52,11 @@ export default class DeltaCache {
 
           console.log(`Delta cache has been written to file. Cache contained ${entry.length} items.`);
 
-          await this.writeFileToStore(filename, filepath);
+          await this.writeFileToStore(service_config, filename, filepath);
           console.log("File is persisted in store and can be consumed now.");
 
         } catch (e) {
-          await storeError(e);
+          await storeError(service_config, e);
         }
       }
     } else {
@@ -74,20 +67,21 @@ export default class DeltaCache {
   /**
    * Get all delta files produced since a given timestamp
    *
+   * @param service_config the configuration to be used
    * @param since {string} ISO date time
    * @public
   */
-  async getDeltaFiles(since) {
+  async getDeltaFiles(service_config, since) {
     console.log(`Retrieving delta files since ${since}`);
 
     const result = await query(`
-    ${PREFIXES}
+    ${service_config.prefixes}
 
     SELECT ?uuid ?filename ?created WHERE {
       ?s a nfo:FileDataObject ;
           mu:uuid ?uuid ;
           nfo:fileName ?filename ;
-          dct:publisher <${PUBLISHER_URI}> ;
+          dct:publisher <${service_config.publisherUri}> ;
           dct:created ?created .
       ?file nie:dataSource ?s .
 
@@ -110,7 +104,7 @@ export default class DeltaCache {
   /**
    * @private
    */
-  async writeFileToStore(filename, filepath) {
+  async writeFileToStore(service_config, filename, filepath) {
     const virtualFileUuid = uuid();
     const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
     const nowLiteral = sparqlEscapeDateTime(new Date());
@@ -118,10 +112,10 @@ export default class DeltaCache {
     const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
 
     await update(`
-    ${PREFIXES}
+    ${service_config.prefixes}
 
     INSERT DATA {
-      GRAPH <${FILES_GRAPH}> {
+      GRAPH <${service_config.filesGraph}> {
         <${virtualFileUri}> a nfo:FileDataObject ;
           mu:uuid "${virtualFileUuid}" ;
           nfo:fileName "${filename}" ;
@@ -129,7 +123,7 @@ export default class DeltaCache {
           dbpedia:fileExtension "json" ;
           dct:created ${nowLiteral} ;
           dct:modified ${nowLiteral} ;
-          dct:publisher <${PUBLISHER_URI}> .
+          dct:publisher <${service_config.publisherUri}> .
         <${physicalFileUri}> a nfo:FileDataObject ;
           mu:uuid "${physicalFileUuid}" ;
           nie:dataSource <${virtualFileUri}> ;
@@ -140,16 +134,17 @@ export default class DeltaCache {
           dct:modified ${nowLiteral} .
       }
     }
-  `, { 'mu-call-scope-id': MU_CALL_SCOPE_ID_PUBLICATION_GRAPH_MAINTENANCE });
+  `, { 'mu-call-scope-id': service_config.muCallScopeIdPublicationGraphMaintenance });
   }
 }
 
 /**
  * Chunks the cached array, to not exploded memory when writing to json
+ * @param service_config the configuration to be used
  * @param cache: [ { inserts: [], deletes: [] }, { inserts: [], deletes: [] } ]
  * @return [ [ { inserts: [], deletes: [] } ], [ { inserts: [], deletes: [] } ] ]
  */
-function chunkCache( cache ) {
+function chunkCache(service_config, cache ) {
   const allChunks = [];
   for(const entry of cache){
 
