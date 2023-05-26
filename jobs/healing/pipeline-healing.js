@@ -237,10 +237,13 @@ async function getSourceTriples(service_config, service_export_config, property,
     console.log(`DEBUG: number of source triples: ${scopedSourceTriples.length}`)
 
     if (service_config.useFileDiff) {
+      // TODO: check if outputting all scopedSourceTriples to a file and then running `sort` and `uniq` on it is quicker
       let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
       const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
       let newSourceTriples = tmp.fileSync();
-      execSync(`cat ${sourceTriples.name} ${diffs.name} | tee ${newSourceTriples.name}`, optionsNoOutput)
+      execSync(`cat ${sourceTriples.name} ${diffs.inserts.name} | tee ${newSourceTriples.name}`, optionsNoOutput)
+      diffs.inserts.removeCallback();
+      diffs.deletes.removeCallback();
       sourceTriples.removeCallback();
       sourceTriples = newSourceTriples;
       scopedSourceTriplesFile.removeCallback();
