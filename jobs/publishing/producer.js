@@ -139,7 +139,7 @@ async function rewriteInsertedChangeset(service_config, service_export_config, c
     const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        const isInScope = await isInScopeOfConfiguration(service_export_config, uri, config);
+        const isInScope = await isInScopeOfConfiguration(service_config, service_export_config, uri, config);
         if (isInScope) {
           // We don't check if the resource has already been processed,
           // different configuration could contain different predicates
@@ -196,7 +196,7 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
   for (let {uri, config} of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isInScope = await isInScopeOfConfiguration(service_export_config, uri, config);
+      const isInScope = await isInScopeOfConfiguration(service_config, service_export_config, uri, config);
       if (isInScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching insert changeset with export of resource <${uri}>.`);
@@ -247,7 +247,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, ch
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
         const predicate = triple.predicate.value;
-        const isOutOfScope = !(await isInScopeOfConfiguration(service_export_config, uri, config));
+        const isOutOfScope = !(await isInScopeOfConfiguration(service_config, service_export_config, uri, config));
         // We don't check if the resource has already been processed,
         // different configuration could contain different predicates
         if (isOutOfScope) {
@@ -301,7 +301,7 @@ async function enrichDeletedChangeset(service_config, service_export_config, cha
   for (let {uri, config} of impactedResources) {
     if (!processedResources.includes(uri)) {
       processedResources.push(uri); // make sure to handle each resource only once
-      const isOutOfScope = !(await isInScopeOfConfiguration(uri, config));
+      const isOutOfScope = !(await isInScopeOfConfiguration(service_config,service_export_config, uri, config));
       if (isOutOfScope) {
         if (LOG_DELTA_REWRITE)
           console.log(`Enriching delete changeset with export of resource <${uri}>.`);
@@ -476,7 +476,7 @@ function getChildConfigurations(service_export_config, config) {
  * Note 2:
  *    by default the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
-async function isInScopeOfConfiguration(service_export_config, subject, config, graphFilterBuilder = () => configGraphFilter(config)) {
+async function isInScopeOfConfiguration(service_config, service_export_config, subject, config, graphFilterBuilder = () => configGraphFilter(service_config, config)) {
 
   let additionalFilter = '';
 
