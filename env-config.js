@@ -111,8 +111,8 @@ export class Config {
             throw `Expected 'loginPath' should be provided.`;
         this.loginPath = configData.loginPath;
         //LOGIN
-        this.key = process.env.key || '';
-        this.account = process.env.account || 'http://services.lblod.info/diff-consumer/account';
-        this.account_graph = process.env.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
+        this.key = configData.key || '';
+        this.account = configData.account || 'http://services.lblod.info/diff-consumer/account';
+        this.account_graph = configData.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
     }
 }
