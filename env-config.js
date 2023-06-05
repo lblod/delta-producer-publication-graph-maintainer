@@ -13,6 +13,7 @@ export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json'
 export const VIRTUOSO_USERNAME = process.env.VIRTUOSO_USERNAME || "dba"
 export const VIRTUOSO_PASSWORD = process.env.VIRTUOSO_PASSWORD || "dba"
+export const DELTA_CHUNK_SIZE = process.env.DELTA_CHUNK_SIZE || 1000000
 
 export class Config {
     constructor(configData) {

@@ -222,6 +222,7 @@ The following enviroment variables can be optionally configured:
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
 * `VIRTUOSO_USERNAME (default: "dba")`: The username to use when querying virtuoso using `isql`
 * `VIRTUOSO_PASSWORD (default: "dba")`: The password to use when querying virtuoso using `isql`
+* `DELTA_CHUNK_SIZE (default: 1000000)`: The maximum size of deltas that are published
 
 ### API
 #### POST /delta

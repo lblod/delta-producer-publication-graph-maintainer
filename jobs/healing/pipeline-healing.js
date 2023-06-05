@@ -9,6 +9,7 @@ import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
 import {batchedUpdate, serializeTriple, sparqlEscapePredicate} from '../../lib/utils';
 import {
+  DELTA_CHUNK_SIZE,
   MU_AUTH_ENDPOINT,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
@@ -107,7 +108,7 @@ export async function runHealingTask(service_config, service_export_config, task
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
-    let fileDiffMaxArraySize = 1000000;
+    let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
     if (service_config.useFileDiff) {
       let deletes = [];
       console.log("DEBUG: getting data from deletes file")
