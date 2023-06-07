@@ -179,7 +179,6 @@ The proporties are:
 * `queuePollInterval`: the queue is polled every minute by default.
 * `reportingFilesGraph`: If a specific graph is needed for the reports (e.g. healing) add URI here.
 * `publisherUri (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
-* `deltaPath`: The path where the delta messages arrive
 * `filesPath`: The path where the files are served
 * `loginPath`: The login path
 * `key (default: '')`: The login key
@@ -190,7 +189,6 @@ The proporties are:
 ```json
     "besluiten": {
         "deltaInterval": 10000,
-        "deltaPath": "/besluiten/delta",
         "errorCreatorUri": "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer-besluiten",
         "errorGraph": "http://mu.semte.ch/graphs/harvesting",
         "exportConfigPath": "/config/besluiten/export.json",
@@ -220,6 +218,7 @@ The following enviroment variables can be optionally configured:
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
+* `DELTA_PATH`: The path where the delta messages get delivered
 
 ### API
 #### POST /delta

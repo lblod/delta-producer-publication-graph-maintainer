@@ -1,8 +1,8 @@
 import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
-import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
+import { app, errorHandler, query, sparqlEscapeUri, uuid } from 'mu';
 import {
-  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
+  Config, CONFIG_SERVICES_JSON_PATH, DELTA_PATH, LOG_INCOMING_DELTA
 } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeHealingTask } from './jobs/healing/main';
@@ -10,6 +10,7 @@ import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
 import {loadConfiguration, storeError} from './lib/utils';
+import NodeCache from 'node-cache';
 
 app.use( bodyParser.json({
   type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
@@ -17,23 +18,84 @@ app.use( bodyParser.json({
 }));
 
 let services = require(CONFIG_SERVICES_JSON_PATH);
-
 console.log("Services config is: ", services)
-for (const name in services){
+let config_per_service = {}
+let producerQueues = {}
+
+// mapping from type to the name of each service that is interested in it, an empty array indicates that the type can be ignored
+let interested_types = {}
+for (const name in services) {
   let service = services[name]
   const service_config = new Config(service);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
+  const types = require(service_config.exportConfigPath).export.map(config=>config.type);
+  for (const type of types){
+    interested_types[type] = [...(interested_types[type] || []), name];
+  }
+  config_per_service[name] = {
+    service_config: service_config,
+    service_export_config: service_export_config,
+    interested_types: interested_types
+  }
+  producerQueues[name] = new ProcessingQueue(service_config);
+}
 
-  const producerQueue = new ProcessingQueue(service_config);
+let subjectTypeCache = new NodeCache( { stdTTL: 300 } );
+// The types of a delta consists of two parts
+// - the types contained in the delta payload
+// - the types contained in the database about the delta subjects
+async function getTypesFromDelta(delta) {
+  let indelta = new Set([
+    ...delta.flatMap(d => d.inserts).filter(i => i.predicate.value === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type").map(i => i.object.value),
+    ...delta.flatMap(d => d.deletes).filter(i => i.predicate.value === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type").map(i => i.object.value)
+  ]);
+  let subjects = new Set([
+    ...delta.flatMap(d => d.inserts).map(i => i.subject.value),
+    ...delta.flatMap(d => d.deletes).map(i => i.subject.value)
+  ]);
+  let inDb = new Set();
+  for (const subject of subjects) {
+    let types = subjectTypeCache.get(subject)
+    console.log(`Cached types for ${subject} are ${JSON.stringify(types)}`)
+    if (types === undefined) {
+      const result = await query(`
+      SELECT ?type WHERE {
+        ${sparqlEscapeUri(subject)} a ?type.
+      }`);
+      types = result.results.bindings.map(t => t.type.value);
+      subjectTypeCache.set(subject, types)
+    }
+    types.forEach(t=>inDb.add(t))
+  }
+  return [...new Set([...indelta, ...inDb])];
+}
 
-  app.post(service_config.deltaPath, async function (req, res) {
+app.post(DELTA_PATH, async function (req, res) {
+  const body = req.body;
+  // Get the types from the delta message
+  const typesFromDelta = await getTypesFromDelta(body);
+  if (LOG_INCOMING_DELTA) {
+    console.log(`Receiving delta ${JSON.stringify(body)}`);
+    console.log(`Delta has types ${JSON.stringify(typesFromDelta)}`);
+  }
+
+  // Ignore errors in delta's
+  let typesToIgnore = ["http://open-services.net/ns/core#Error", "http://redpencil.data.gift/vocabularies/deltas/Error"];
+  if (typesFromDelta.every(v => typesToIgnore.includes(v))) {
+    res.status(202).send();
+    return;
+  }
+  // only send the delta to relevant services
+  let service_keys = typesFromDelta.flatMap(type => (interested_types[type]) || []);
+  // but if the types match no services, default to sending it to all services
+  if (service_keys.length === 0) service_keys = Object.keys(services);
+  for (const name in services) {
+    const service_config = config_per_service[name].service_config;
+    const service_export_config = config_per_service[name].service_export_config;
+    const producerQueue = producerQueues[name];
     try {
-      const body = req.body;
-
-      if (LOG_INCOMING_DELTA)
-        console.log(`Receiving delta ${JSON.stringify(body)}`);
-
-      if (await doesDeltaContainNewTaskToProcess(service_config, body)) {
+      // only check if a delta contains a new task if one of the types is task
+      if (typesFromDelta.includes("http://redpencil.data.gift/vocabularies/tasks/Task") && await doesDeltaContainNewTaskToProcess(service_config, body)) {
         //From here on, the database is source of truth and the incoming delta was just a signal to start
         console.log(`Healing process (or initialSync) will start.`);
         console.log(`There were still ${producerQueue.queue.length} jobs in the queue`);
@@ -78,7 +140,10 @@ for (const name in services){
       } else {
         //normal operation mode: maintaining the publication graph
         //Put in a queue, because we want to make sure to have them ordered.
-        producerQueue.addJob(async () => await runPublicationFlow(service_config, service_export_config, body));
+        //but only send the delta messages to the parts that are interested in it to avoid flooding the other services
+        if (service_keys.includes(name)) {
+          producerQueue.addJob(async () => await runPublicationFlow(service_config, service_export_config, body));
+        }
       }
       res.status(202).send();
     } catch (error) {
@@ -86,19 +151,11 @@ for (const name in services){
       await storeError(service_config, error);
       res.status(500).send();
     }
-  });
-
-  async function runPublicationFlow(service_config, service_export_config, deltas) {
-    try {
-      const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
-      if (service_config.serveDeltaFiles) {
-        await publishDeltaFiles(service_config, insertedDeltaData);
-      }
-    } catch (error) {
-      console.error(error);
-      await storeError(service_config, error);
-    }
   }
+})
+
+for (const name in services){
+  const service_config = config_per_service[name].service_config;
 
   if (service_config.serveDeltaFiles) {
 //This endpoint only makes sense if serveDeltaFiles is set to true;
@@ -157,3 +214,15 @@ for (const name in services){
   });
 }
 app.use(errorHandler);
+
+async function runPublicationFlow(service_config, service_export_config, deltas) {
+  try {
+    const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
+    if (service_config.serveDeltaFiles) {
+      await publishDeltaFiles(service_config, insertedDeltaData);
+    }
+  } catch (error) {
+    console.error(error);
+    await storeError(service_config, error);
+  }
+}

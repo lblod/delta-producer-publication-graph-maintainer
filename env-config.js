@@ -11,6 +11,10 @@ export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'tr
 export const CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
 export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json'
+export const DELTA_PATH = process.env.DELTA_PATH
+if (DELTA_PATH === undefined) {
+    throw `Expected 'DELTA_PATH' environment variable should be provided.`;
+}
 
 export class Config {
     constructor(configData) {
@@ -101,9 +105,6 @@ export class Config {
         /*
          * PATHS
          */
-        if (!configData.deltaPath)
-            throw `Expected 'deltaPath' should be provided.`;
-        this.deltaPath = configData.deltaPath;
         if (!configData.filesPath)
             throw `Expected 'filesPath' should be provided.`;
         this.filesPath = configData.filesPath;

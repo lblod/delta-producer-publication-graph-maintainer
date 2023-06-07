@@ -9,6 +9,7 @@ export async function doesDeltaContainNewTaskToProcess(service_config, deltaPayl
   for (let entry of entries) {
     if(await isNewTaskOfInterest(service_config, entry )){
       containsNewTask = true;
+      break;
     }
 
   }
