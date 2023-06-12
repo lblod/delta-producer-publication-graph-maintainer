@@ -262,82 +262,39 @@ async function getSourceTriples(service_config, service_export_config, property,
  */
 async function getPublicationTriples(service_config, property, publicationGraph){
   console.log(`DEBUG: Publication triples using file? ${service_config.useFileDiff}`)
+  const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
+  const selectFromPublicationGraph = `
+   SELECT DISTINCT ?subject ?object WHERE {
+    GRAPH ${sparqlEscapeUri(publicationGraph)}{
+      ?subject ${sparqlEscapeUri(property)} ?object.
+    }
+   }
+  `;
   if (service_config.useFileDiff) {
-    // when using file-based diff, query the database using isql to a file
-    let username = VIRTUOSO_USERNAME, password = VIRTUOSO_PASSWORD;
-    // function to create serialized triple from the subject, predicate, object and possibly its type and language
-    function generateTripleFromParts(parts){
-      let subject = parts[0]
-      let predicate = parts[1]
-      let object = parts[2]
-      let type = parts[3]
-      let lang = parts[4]
-
-      let objectType = 'uri';
-      if (type === "http://www.w3.org/2001/XMLSchema#string") {
-        objectType = "literal"
-      } else if (type){
-        objectType = "typed-literal"
-      }
-      return {
-        nTriple: serializeTriple({
-          subject: {
-            type: "uri", value: subject
-          },
-          predicate: {
-            type: "uri", value: predicate
-          },
-          object: {
-            type: objectType, datatype: type, lang: lang, value: object
-          }
-        })
-      }
-    }
-    let inputFile = tmp.fileSync();
-    execSync(`isql Virtuoso ${username} ${password} <<< "sparql select ?blank ?s ?p ?o ?o_type ?o_lang where { graph ${sparqlEscapeUri(publicationGraph)} {?s ?p ?o.} bind(${sparqlEscapeUri(property)} as ?p) bind(datatype(?o) as ?o_type) bind(lang(?o) as ?o_lang) bind('' as ?blank)}" -b -L1000000 -x8 | tee ${inputFile.name}`, optionsNoOutput)
-    let rl = new Readlines(inputFile.name)
     let outputFile = tmp.fileSync();
-    let parts = `${rl.next()}`.split("\x08");
-    let line, tripleParts = parts.slice(1), triples = [];
-    while((line = rl.next())){
-      line = `${line}`
-      let parts = line.split("\x08")
-      if (line[0] === "\x08" && tripleParts.length === 5) {
-        triples.push(generateTripleFromParts(tripleParts, outputFile))
-        tripleParts = parts.slice(1)
-      } else {
-        tripleParts[tripleParts.length-1] += parts[0]
-        if (parts.length > 1){
-          tripleParts = [...tripleParts, ...parts.slice(1)]
-        }
-      }
-      // only write to the outputFile with a bunch of triples
-      let numberOfTriplesInMemory = 1000;
-      if (triples.length === numberOfTriplesInMemory){
-        arrayToFile(triples, outputFile);
-        triples = [];
-      }
+    let offSet = 0;
+    let maxTriples = DELTA_CHUNK_SIZE
+    console.log(`Hitting database ${endpoint} with paged expensive queries`);
+    let stop = false;
+    while (!stop) {
+      const selectFromPublicationGraphPaged = `
+      ${selectFromPublicationGraph}
+       ORDER BY ?subject
+       LIMIT ${maxTriples}
+       OFFSET ${offSet}
+    `;
+      const result = await query(selectFromPublicationGraphPaged, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+      let newTriples = reformatQueryResult(result, property);
+      arrayToFile(newTriples, outputFile);
+      stop = newTriples.length < maxTriples;
+      offSet += maxTriples;
     }
-    // write the remaining triples to the outputFile
-    arrayToFile(triples, outputFile);
-    inputFile.removeCallback()
     return outputFile;
   } else {
-    const selectFromPublicationGraph = `
-    SELECT DISTINCT ?subject ?predicate ?object WHERE {
-      BIND(${sparqlEscapeUri(property)} as ?predicate)
-
-      GRAPH ${sparqlEscapeUri(publicationGraph)}{
-        ?subject ?predicate ?object.
-      }
-     }
-  `;
-
   //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
-  return reformatQueryResult(result);
+  return reformatQueryResult(result, property);
   }
 }
 
@@ -488,14 +445,16 @@ function diffTriplesData(service_config, target, source) {
   return diff;
 }
 
-function reformatQueryResult( result ){
+function reformatQueryResult( result, predicate = undefined ){
   let triplesData = [];
 
   if(result.results && result.results.bindings && result.results.bindings.length){
     const triples = result.results.bindings;
     triplesData = triples.map(t => {
       return {
-        nTriple: serializeTriple(t)
+        nTriple: serializeTriple({
+          subject: t.subject, predicate: predicate ? {type: "uri", value: predicate} : t.predicate, object: t.object
+        })
         // originalFormat: t
       };
     });
