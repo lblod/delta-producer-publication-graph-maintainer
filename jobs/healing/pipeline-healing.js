@@ -13,7 +13,7 @@ import {
   MU_AUTH_ENDPOINT,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
-  VIRTUOSO_ENDPOINT, VIRTUOSO_PASSWORD, VIRTUOSO_USERNAME
+  VIRTUOSO_ENDPOINT
 } from "../../env-config";
 import {publishDeltaFiles} from "../../files-publisher/main";
 
