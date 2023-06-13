@@ -2,12 +2,12 @@ import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { sparqlEscapeUri } from 'mu';
 import { Delta } from '../lib/delta';
 
-export async function doesDeltaContainNewTaskToProcess(service_config, deltaPayload ){
-  const entries = new Delta(deltaPayload).getInsertsFor('http://www.w3.org/ns/adms#status', service_config.statusScheduled);
+export async function doesDeltaContainNewTaskToProcess(serviceConfig, deltaPayload ){
+  const entries = new Delta(deltaPayload).getInsertsFor('http://www.w3.org/ns/adms#status', serviceConfig.statusScheduled);
   let containsNewTask = false;
 
   for (let entry of entries) {
-    if(await isNewTaskOfInterest(service_config, entry )){
+    if(await isNewTaskOfInterest(serviceConfig, entry )){
       containsNewTask = true;
       break;
     }
@@ -17,14 +17,14 @@ export async function doesDeltaContainNewTaskToProcess(service_config, deltaPayl
   return containsNewTask;
 }
 
-export async function hasInitialSyncRun(service_config){
+export async function hasInitialSyncRun(serviceConfig){
   const queryString = `
-    ${service_config.prefixes}
+    ${serviceConfig.prefixes}
     SELECT DISTINCT ?job WHERE {
       GRAPH ?g {
-        ?job a ${sparqlEscapeUri(service_config.jobType)};
-             task:operation ${sparqlEscapeUri(service_config.initialPublicationGraphSyncJobOperation)};
-             adms:status ${sparqlEscapeUri(service_config.statusSuccess)}.
+        ?job a ${sparqlEscapeUri(serviceConfig.jobType)};
+             task:operation ${sparqlEscapeUri(serviceConfig.initialPublicationGraphSyncJobOperation)};
+             adms:status ${sparqlEscapeUri(serviceConfig.statusSuccess)}.
       }
     }
   `;
@@ -32,22 +32,22 @@ export async function hasInitialSyncRun(service_config){
   return result.results.bindings.length;
 }
 
-export async function isBlockingJobActive(service_config){
+export async function isBlockingJobActive(serviceConfig){
   const queryString = `
-    ${service_config.prefixes}
+    ${serviceConfig.prefixes}
     SELECT DISTINCT ?job WHERE {
       GRAPH ?g {
-        ?job a ${sparqlEscapeUri(service_config.jobType)};
+        ?job a ${sparqlEscapeUri(serviceConfig.jobType)};
              task:operation ?operation;
              adms:status ?status.
       }
       FILTER( ?status IN (
-        ${sparqlEscapeUri(service_config.statusScheduled)},
-        ${sparqlEscapeUri(service_config.statusBusy)}
+        ${sparqlEscapeUri(serviceConfig.statusScheduled)},
+        ${sparqlEscapeUri(serviceConfig.statusBusy)}
       ))
       FILTER( ?operation IN (
-        ${sparqlEscapeUri(service_config.initialPublicationGraphSyncJobOperation)},
-        ${sparqlEscapeUri(service_config.healingJobOperation)}
+        ${sparqlEscapeUri(serviceConfig.initialPublicationGraphSyncJobOperation)},
+        ${sparqlEscapeUri(serviceConfig.healingJobOperation)}
        )
       )
     }
@@ -56,28 +56,28 @@ export async function isBlockingJobActive(service_config){
   return result.results.bindings.length;
 }
 
-async function isNewTaskOfInterest(service_config, taskUri ){
+async function isNewTaskOfInterest(serviceConfig, taskUri ){
   const queryString = `
-    ${service_config.prefixes}
+    ${serviceConfig.prefixes}
 
     SELECT DISTINCT ?job ?task WHERE {
       BIND(${sparqlEscapeUri(taskUri)} as ?task)
       GRAPH ?g {
-          ?job a ${sparqlEscapeUri(service_config.jobType)};
+          ?job a ${sparqlEscapeUri(serviceConfig.jobType)};
             task:operation ?jobOperation.
 
           ?task dct:isPartOf ?job;
-            a ${sparqlEscapeUri(service_config.taskType)};
+            a ${sparqlEscapeUri(serviceConfig.taskType)};
             task:operation ?taskOperation;
-            adms:status ${sparqlEscapeUri(service_config.statusScheduled)}.
+            adms:status ${sparqlEscapeUri(serviceConfig.statusScheduled)}.
        }
       FILTER( ?taskOperation IN (
-         ${sparqlEscapeUri(service_config.initialPublicationGraphSyncTaskOperation)},
-         ${sparqlEscapeUri(service_config.healingPatchPublicationGraphTaskOperation)}
+         ${sparqlEscapeUri(serviceConfig.initialPublicationGraphSyncTaskOperation)},
+         ${sparqlEscapeUri(serviceConfig.healingPatchPublicationGraphTaskOperation)}
       ))
       FILTER( ?jobOperation IN (
-         ${sparqlEscapeUri(service_config.initialPublicationGraphSyncJobOperation)},
-         ${sparqlEscapeUri(service_config.healingJobOperation)}
+         ${sparqlEscapeUri(serviceConfig.initialPublicationGraphSyncJobOperation)},
+         ${sparqlEscapeUri(serviceConfig.healingJobOperation)}
        )
       )
     }
@@ -87,9 +87,9 @@ async function isNewTaskOfInterest(service_config, taskUri ){
   return result.results.bindings.length > 0;
 }
 
-export function appendPublicationGraph(service_config, tripleObject ){
+export function appendPublicationGraph(serviceConfig, tripleObject ){
   tripleObject.graph = {
-    value: service_config.publicationGraph,
+    value: serviceConfig.publicationGraph,
     type: "uri"
   };
   return tripleObject;
