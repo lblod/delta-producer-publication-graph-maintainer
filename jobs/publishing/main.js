@@ -26,7 +26,7 @@ export async function updatePublicationGraph(serviceConfig, serviceExportConfig,
           .value();
 
     if(deletes.length){
-      await batchedUpdate(serviceConfig, deletes.map(serviceConfig, t => serializeTriple(t)),
+      await batchedUpdate(serviceConfig, deletes.map(t => serializeTriple(t)),
                           serviceConfig.publicationGraph,
                           'DELETE',
                           serviceConfig.updatePublicationGraphSleep,
