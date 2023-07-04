@@ -24,19 +24,6 @@ const optionsNoOutput = {
 };
 
 export async function runHealingTask(service_config, service_export_config, task, isInitialSync, publishDelta ) {
-  async function updateDatabase(service_config, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
-    console.log(`Starting ${operation.toLowerCase()} batch update`);
-    await batchedUpdate(updates,
-        service_config.publicationGraph,
-        operation,
-        100,
-        service_config.healingPatchGraphBatchSize,
-        extraHeaders,
-        publicationEndpoint
-    );
-    //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-    await createResultsContainer(task, updates, container, resultFileName);
-  }
 
   try {
     const conceptSchemeUri = service_export_config.conceptScheme;
@@ -118,15 +105,15 @@ export async function runHealingTask(service_config, service_export_config, task
         deletes.push(JSON.parse(line).nTriple);
         // to make sure the deletes array does not explode in memory we push the update regularly
         if (deletes.length >= fileDiffMaxArraySize) {
-          await updateDatabase(service_config, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
+          await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
           deletes = [];
           part++;
         }
       }
-      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
+      await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
     } else {
       let deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await updateDatabase("DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', service_config.removalContainer);
+      await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', service_config.removalContainer);
     }
 
     if (service_config.useFileDiff) {
@@ -139,15 +126,15 @@ export async function runHealingTask(service_config, service_export_config, task
         inserts.push(JSON.parse(line).nTriple);
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
-          await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
+          await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
           inserts = [];
           part++;
         }
       }
-      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
+      await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
     } else {
       let inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', service_config.insertionContainer);
+      await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', service_config.insertionContainer);
     }
 
     console.log(`Started at ${started}`);
@@ -461,4 +448,18 @@ function reformatQueryResult( result, predicate = undefined ){
   }
 
   return triplesData;
+}
+
+async function updateDatabase(service_config, task, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
+  console.log(`Starting ${operation.toLowerCase()} batch update`);
+  await batchedUpdate(updates,
+      service_config.publicationGraph,
+      operation,
+      100,
+      service_config.healingPatchGraphBatchSize,
+      extraHeaders,
+      publicationEndpoint
+  );
+  //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
+  await createResultsContainer(task, updates, container, resultFileName);
 }
