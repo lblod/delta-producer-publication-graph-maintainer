@@ -22,7 +22,7 @@ const optionsNoOutput = {
   encoding: 'utf-8',
   stdio: ['ignore', 'ignore', 'ignore'],
   shell: '/bin/bash'
-}
+};
 
 export async function runHealingTask(service_config, service_export_config, task, isInitialSync, publishDelta ) {
   async function updateDatabase(service_config, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
