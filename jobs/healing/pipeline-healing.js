@@ -16,8 +16,6 @@ import {
   PUBLICATION_VIRTUOSO_ENDPOINT,
   VIRTUOSO_ENDPOINT
 } from "../../env-config";
-import {publishDeltaFiles} from "../../files-publisher/main";
-
 
 const optionsNoOutput = {
   encoding: 'utf-8',
