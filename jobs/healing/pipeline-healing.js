@@ -26,7 +26,7 @@ const optionsNoOutput = {
 
 export async function runHealingTask(service_config, service_export_config, task, isInitialSync, publishDelta ) {
   async function updateDatabase(service_config, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
-    console.log(`DEBUG: Starting ${operation.toLowerCase()} batch update`);
+    console.log(`Starting ${operation.toLowerCase()} batch update`);
     await batchedUpdate(updates,
         service_config.publicationGraph,
         operation,
@@ -111,7 +111,7 @@ export async function runHealingTask(service_config, service_export_config, task
     let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
     if (service_config.useFileDiff) {
       let deletes = [];
-      console.log("DEBUG: getting data from deletes file");
+      console.log("Getting data from deletes file");
       let rl = new Readlines(accumulatedDiffs.deletes.name);
       let line, part = 0;
       while ((line = rl.next())) {
@@ -132,7 +132,7 @@ export async function runHealingTask(service_config, service_export_config, task
 
     if (service_config.useFileDiff) {
       let inserts = [];
-      console.log("DEBUG: getting data from inserts file");
+      console.log("Getting data from inserts file");
       let rl = new Readlines(accumulatedDiffs.inserts.name);
       let line, part = 0;
       while ((line = rl.next())) {
@@ -151,8 +151,8 @@ export async function runHealingTask(service_config, service_export_config, task
       await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', service_config.insertionContainer);
     }
 
-    console.log(`started at ${started}`);
-    console.log(`ending at ${new Date()}`);
+    console.log(`Started at ${started}`);
+    console.log(`Ended at ${new Date()}`);
     if (publishDelta) {
       let deletes = [];
       let rl = new Readlines(accumulatedDiffs.deletes.name);
@@ -235,7 +235,7 @@ async function getSourceTriples(service_config, service_export_config, property,
                                                              conceptSchemeUri,
                                                              service_config.publicationGraph,
                                                              service_export_config);
-    console.log(`DEBUG: number of source triples: ${scopedSourceTriples.length}`);
+    console.log(`Number of source triples: ${scopedSourceTriples.length}`);
 
     if (service_config.useFileDiff) {
       let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
@@ -260,7 +260,7 @@ async function getSourceTriples(service_config, service_export_config, property,
  * Gets the triples residing in the publication graph, for a specific property
  */
 async function getPublicationTriples(service_config, property, publicationGraph){
-  console.log(`DEBUG: Publication triples using file? ${service_config.useFileDiff}`);
+  console.log(`Publication triples using file? ${service_config.useFileDiff}`);
   const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   const selectFromPublicationGraph = `
    SELECT DISTINCT ?subject ?object WHERE {
@@ -376,7 +376,7 @@ function lines(filename) {
 }
 function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   // Note: the S and T parameters can be used to tweak the memory usage of the sort command
-  console.log(`DEBUG: DIFFING FILE BASED`);
+  console.log(`Diffing; file based!`);
 
   let sorted1 = tmp.fileSync();
   let sorted2 = tmp.fileSync();
@@ -410,12 +410,12 @@ function diffTriplesData(service_config, target, source) {
   } else if (source.length === 0) {
     diff.inserts = target;
   } else if (service_config.useFileDiff) {
-    console.log(`DEBUG: FILE BASED DIFF, target size is ${target.length}, source size is ${source.length}`);
+    console.log(`File based diff: target size is ${target.length}, source size is ${source.length}`);
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
     let targetFile = arrayToFile(target, tmp.fileSync());
     let sourceFile = arrayToFile(source, tmp.fileSync());
     let fileDiff = diffFiles(targetFile, sourceFile);
-    console.log(`DEBUG: FILE BASED DIFF, calculating inserts and deletes from files`);
+    console.log(`File based diff: calculating inserts and deletes from files`);
 
     diff = {
       inserts: lines(fileDiff.inserts.name),
