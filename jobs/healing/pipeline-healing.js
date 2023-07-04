@@ -1,13 +1,14 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import * as fs from 'fs';
 import * as tmp from 'tmp';
-import {execSync} from 'child_process';
+import { execSync } from 'child_process';
 import * as Readlines from '@lazy-node/readlines';
 import { uniq } from 'lodash';
 import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
-import {batchedUpdate, serializeTriple, sparqlEscapePredicate} from '../../lib/utils';
+import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
+import { publishDeltaFiles } from "../../files-publisher/main";
 import {
   DELTA_CHUNK_SIZE,
   MU_AUTH_ENDPOINT,
