@@ -10,8 +10,8 @@ export const PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDP
 export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
 export const CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
 export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
-export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json'
-export const DELTA_CHUNK_SIZE = process.env.DELTA_CHUNK_SIZE || 1000000
+export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
+export const DELTA_CHUNK_SIZE = process.env.DELTA_CHUNK_SIZE || 1000000;
 
 export class Config {
     constructor(configData) {

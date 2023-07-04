@@ -18,9 +18,9 @@ app.use( bodyParser.json({
 
 let services = require(CONFIG_SERVICES_JSON_PATH);
 
-console.log("Services config is: ", services)
+console.log("Services config is: ", services);
 for (const name in services){
-  let service = services[name]
+  let service = services[name];
   const service_config = new Config(service);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 

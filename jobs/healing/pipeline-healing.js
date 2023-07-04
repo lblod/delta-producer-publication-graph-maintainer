@@ -26,7 +26,7 @@ const optionsNoOutput = {
 
 export async function runHealingTask(service_config, service_export_config, task, isInitialSync, publishDelta ) {
   async function updateDatabase(service_config, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
-    console.log(`DEBUG: Starting ${operation.toLowerCase()} batch update`)
+    console.log(`DEBUG: Starting ${operation.toLowerCase()} batch update`);
     await batchedUpdate(updates,
         service_config.publicationGraph,
         operation,
@@ -76,17 +76,17 @@ export async function runHealingTask(service_config, service_export_config, task
       console.log(`Calculating diffs for property ${property}, this may take a while`);
       if (service_config.useFileDiff) {
         let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
-        let newInserts = tmp.fileSync()
-        execSync(`cat ${accumulatedDiffs.inserts.name} ${fileDiff.inserts.name} | tee ${newInserts.name}`, optionsNoOutput)
-        fileDiff.inserts.removeCallback()
-        accumulatedDiffs.inserts.removeCallback()
-        accumulatedDiffs.inserts = newInserts
+        let newInserts = tmp.fileSync();
+        execSync(`cat ${accumulatedDiffs.inserts.name} ${fileDiff.inserts.name} | tee ${newInserts.name}`, optionsNoOutput);
+        fileDiff.inserts.removeCallback();
+        accumulatedDiffs.inserts.removeCallback();
+        accumulatedDiffs.inserts = newInserts;
 
-        let newDeletes = tmp.fileSync()
-        execSync(`cat ${accumulatedDiffs.deletes.name} ${fileDiff.deletes.name} | tee ${newDeletes.name}`, optionsNoOutput)
-        fileDiff.deletes.removeCallback()
-        accumulatedDiffs.deletes.removeCallback()
-        accumulatedDiffs.deletes = newDeletes
+        let newDeletes = tmp.fileSync();
+        execSync(`cat ${accumulatedDiffs.deletes.name} ${fileDiff.deletes.name} | tee ${newDeletes.name}`, optionsNoOutput);
+        fileDiff.deletes.removeCallback();
+        accumulatedDiffs.deletes.removeCallback();
+        accumulatedDiffs.deletes = newDeletes;
 
         sourceTriples.removeCallback();
         publicationGraphTriples.removeCallback();
@@ -111,12 +111,12 @@ export async function runHealingTask(service_config, service_export_config, task
     let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
     if (service_config.useFileDiff) {
       let deletes = [];
-      console.log("DEBUG: getting data from deletes file")
-      let rl = new Readlines(accumulatedDiffs.deletes.name)
+      console.log("DEBUG: getting data from deletes file");
+      let rl = new Readlines(accumulatedDiffs.deletes.name);
       let line, part = 0;
       while ((line = rl.next())) {
-        line = line.toString()
-        deletes.push(JSON.parse(line).nTriple)
+        line = line.toString();
+        deletes.push(JSON.parse(line).nTriple);
         // to make sure the deletes array does not explode in memory we push the update regularly
         if (deletes.length >= fileDiffMaxArraySize) {
           await updateDatabase(service_config, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
@@ -132,12 +132,12 @@ export async function runHealingTask(service_config, service_export_config, task
 
     if (service_config.useFileDiff) {
       let inserts = [];
-      console.log("DEBUG: getting data from inserts file")
-      let rl = new Readlines(accumulatedDiffs.inserts.name)
+      console.log("DEBUG: getting data from inserts file");
+      let rl = new Readlines(accumulatedDiffs.inserts.name);
       let line, part = 0;
       while ((line = rl.next())) {
-        line = line.toString()
-        inserts.push(JSON.parse(line).nTriple)
+        line = line.toString();
+        inserts.push(JSON.parse(line).nTriple);
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
           await updateDatabase("INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
@@ -158,11 +158,11 @@ export async function runHealingTask(service_config, service_export_config, task
       let rl = new Readlines(accumulatedDiffs.deletes.name);
       let line;
       while ((line = rl.next())) {
-        line = line.toString()
-        deletes.push(JSON.parse(line).nTriple)
+        line = line.toString();
+        deletes.push(JSON.parse(line).nTriple);
         // to make sure the deletes array does not explode in memory we push the update regularly
         if (deletes.length >= fileDiffMaxArraySize) {
-          await publishDeltaFiles(service_config, {deletes: deletes, inserts: []})
+          await publishDeltaFiles(service_config, {deletes: deletes, inserts: []});
           deletes = [];
         }
       }
@@ -170,11 +170,11 @@ export async function runHealingTask(service_config, service_export_config, task
       rl = new Readlines(accumulatedDiffs.inserts.name);
       line = "";
       while ((line = rl.next())) {
-        line = line.toString()
-        inserts.push(JSON.parse(line).nTriple)
+        line = line.toString();
+        inserts.push(JSON.parse(line).nTriple);
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
-          await publishDeltaFiles(service_config, {inserts: inserts, deletes: []})
+          await publishDeltaFiles(service_config, {inserts: inserts, deletes: []});
           inserts = [];
         }
       }
@@ -183,8 +183,8 @@ export async function runHealingTask(service_config, service_export_config, task
       await publishDeltaFiles(service_config, {deletes: deletes, inserts: inserts});
     }
 
-    accumulatedDiffs.inserts.removeCallback()
-    accumulatedDiffs.deletes.removeCallback()
+    accumulatedDiffs.inserts.removeCallback();
+    accumulatedDiffs.deletes.removeCallback();
   }
   catch(e){
     console.error(e);
@@ -226,7 +226,7 @@ async function getSourceTriples(service_config, service_export_config, property,
   if (service_config.useFileDiff) {
     sourceTriples = tmp.fileSync();
   } else {
-    sourceTriples = []
+    sourceTriples = [];
   }
   for(const config of propertyMap[property]){
     let scopedSourceTriples = await getScopedSourceTriples(service_config,
@@ -235,13 +235,13 @@ async function getSourceTriples(service_config, service_export_config, property,
                                                              conceptSchemeUri,
                                                              service_config.publicationGraph,
                                                              service_export_config);
-    console.log(`DEBUG: number of source triples: ${scopedSourceTriples.length}`)
+    console.log(`DEBUG: number of source triples: ${scopedSourceTriples.length}`);
 
     if (service_config.useFileDiff) {
       let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
       const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
       let newSourceTriples = tmp.fileSync();
-      execSync(`cat ${sourceTriples.name} ${diffs.inserts.name} | tee ${newSourceTriples.name}`, optionsNoOutput)
+      execSync(`cat ${sourceTriples.name} ${diffs.inserts.name} | tee ${newSourceTriples.name}`, optionsNoOutput);
       diffs.inserts.removeCallback();
       diffs.deletes.removeCallback();
       sourceTriples.removeCallback();
@@ -260,7 +260,7 @@ async function getSourceTriples(service_config, service_export_config, property,
  * Gets the triples residing in the publication graph, for a specific property
  */
 async function getPublicationTriples(service_config, property, publicationGraph){
-  console.log(`DEBUG: Publication triples using file? ${service_config.useFileDiff}`)
+  console.log(`DEBUG: Publication triples using file? ${service_config.useFileDiff}`);
   const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
   const selectFromPublicationGraph = `
    SELECT DISTINCT ?subject ?object WHERE {
@@ -272,7 +272,7 @@ async function getPublicationTriples(service_config, property, publicationGraph)
   if (service_config.useFileDiff) {
     let outputFile = tmp.fileSync();
     let offSet = 0;
-    let maxTriples = DELTA_CHUNK_SIZE
+    let maxTriples = DELTA_CHUNK_SIZE;
     console.log(`Hitting database ${endpoint} with paged expensive queries`);
     let stop = false;
     while (!stop) {
@@ -359,18 +359,18 @@ async function getScopedSourceTriples(service_config, config, property, conceptS
 function arrayToFile(array, file){
   let fd = file.fd;
   for (let i=0; i<array.length; ++i){
-    fs.writeSync(fd, JSON.stringify(array[i]) + "\n")
+    fs.writeSync(fd, JSON.stringify(array[i]) + "\n");
   }
-  return file
+  return file;
 }
 // read the file and parse each line to an Object, the opposite of the above function
 function lines(filename) {
-  let retval = []
-  let rl = new Readlines(filename)
-  let line
+  let retval = [];
+  let rl = new Readlines(filename);
+  let line;
   while ((line = rl.next())) {
-    line = line.toString()
-    retval.push(JSON.parse(line))
+    line = line.toString();
+    retval.push(JSON.parse(line));
   }
   return retval;
 }
@@ -381,14 +381,14 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   let sorted1 = tmp.fileSync();
   let sorted2 = tmp.fileSync();
 
-  execSync(`sort ${targetFile.name} -S ${S} -T ${T} -o ${sorted1.name}`, optionsNoOutput)
-  execSync(`sort ${sourceFile.name} -S ${S} -T ${T} -o ${sorted2.name}`, optionsNoOutput)
+  execSync(`sort ${targetFile.name} -S ${S} -T ${T} -o ${sorted1.name}`, optionsNoOutput);
+  execSync(`sort ${sourceFile.name} -S ${S} -T ${T} -o ${sorted2.name}`, optionsNoOutput);
 
   let output1 = tmp.fileSync();
   let output2 = tmp.fileSync();
 
-  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`, optionsNoOutput)
-  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`, optionsNoOutput)
+  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`, optionsNoOutput);
+  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`, optionsNoOutput);
 
   sorted1.removeCallback();
   sorted2.removeCallback();
@@ -396,7 +396,7 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   return {
     inserts: output1,
     deletes: output2
-  }
+  };
 }
 
 
@@ -410,18 +410,20 @@ function diffTriplesData(service_config, target, source) {
   } else if (source.length === 0) {
     diff.inserts = target;
   } else if (service_config.useFileDiff) {
-    console.log(`DEBUG: FILE BASED DIFF, target size is ${target.length}, source size is ${source.length}`)
+    console.log(`DEBUG: FILE BASED DIFF, target size is ${target.length}, source size is ${source.length}`);
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
-    let targetFile = arrayToFile(target, tmp.fileSync())
-    let sourceFile = arrayToFile(source, tmp.fileSync())
-    let fileDiff = diffFiles(targetFile, sourceFile)
-    console.log(`DEBUG: FILE BASED DIFF, calculating inserts and deletes from files`)
+    let targetFile = arrayToFile(target, tmp.fileSync());
+    let sourceFile = arrayToFile(source, tmp.fileSync());
+    let fileDiff = diffFiles(targetFile, sourceFile);
+    console.log(`DEBUG: FILE BASED DIFF, calculating inserts and deletes from files`);
+
     diff = {
       inserts: lines(fileDiff.inserts.name),
       deletes: lines(fileDiff.deletes.name)
-    }
-    fileDiff.inserts.removeCallback()
-    fileDiff.deletes.removeCallback()
+    };
+
+    fileDiff.inserts.removeCallback();
+    fileDiff.deletes.removeCallback();
     targetFile.removeCallback();
     sourceFile.removeCallback();
   } else {
