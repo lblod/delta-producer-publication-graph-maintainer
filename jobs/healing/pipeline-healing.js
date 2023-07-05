@@ -61,25 +61,35 @@ export async function runHealingTask(service_config, service_export_config, task
 
       console.log(`Calculating diffs for property ${property}, this may take a while`);
       if (service_config.useFileDiff) {
+
         let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
         let newInserts = tmp.fileSync();
+
         execSync(`cat ${accumulatedDiffs.inserts.name} ${fileDiff.inserts.name} | tee ${newInserts.name}`, optionsNoOutput);
+
         fileDiff.inserts.removeCallback();
         accumulatedDiffs.inserts.removeCallback();
+
         accumulatedDiffs.inserts = newInserts;
 
         let newDeletes = tmp.fileSync();
+
         execSync(`cat ${accumulatedDiffs.deletes.name} ${fileDiff.deletes.name} | tee ${newDeletes.name}`, optionsNoOutput);
+
         fileDiff.deletes.removeCallback();
         accumulatedDiffs.deletes.removeCallback();
+
         accumulatedDiffs.deletes = newDeletes;
 
         sourceTriples.removeCallback();
         publicationGraphTriples.removeCallback();
       } else {
+
         let diffs = diffTriplesData(service_config, sourceTriples, publicationGraphTriples);
+
         accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
         accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
+        
       }
     }
 
@@ -90,7 +100,7 @@ export async function runHealingTask(service_config, service_export_config, task
 
     let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
     if(service_config.skipMuAuthInitialSync && isInitialSync){
-      console.warn(`Skipping mu-auth when injesting data, make sure you know what you're doing.`);
+      console.warn(`Skipping mu-auth when ingesting data, make sure you know what you're doing.`);
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
