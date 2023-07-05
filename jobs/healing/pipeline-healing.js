@@ -359,6 +359,7 @@ function arrayToFile(array, file){
   }
   return file;
 }
+
 // read the file and parse each line to an Object, the opposite of the above function
 function lines(filename) {
   let retval = [];
@@ -370,6 +371,7 @@ function lines(filename) {
   }
   return retval;
 }
+
 function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   // Note: the S and T parameters can be used to tweak the memory usage of the sort command
   console.log(`Diffing; file based!`);
@@ -394,7 +396,6 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
     deletes: output2
   };
 }
-
 
 function diffTriplesData(service_config, target, source) {
   //Note: this only works correctly if triples have same lexical notation.
