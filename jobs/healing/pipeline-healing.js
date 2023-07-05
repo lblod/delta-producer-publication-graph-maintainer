@@ -89,7 +89,7 @@ export async function runHealingTask(service_config, service_export_config, task
 
         accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
         accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
-        
+
       }
     }
 
