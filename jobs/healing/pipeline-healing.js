@@ -23,15 +23,15 @@ const optionsNoOutput = {
   shell: '/bin/bash'
 };
 
-export async function runHealingTask(serviceConfig, service_export_config, task, isInitialSync, publishDelta ) {
+export async function runHealingTask(serviceConfig, serviceExportConfig, task, isInitialSync, publishDelta ) {
 
   try {
-    const conceptSchemeUri = service_export_config.conceptScheme;
+    const conceptSchemeUri = serviceExportConfig.conceptScheme;
     const started = new Date();
 
     console.log(`starting at ${started}`);
 
-    const propertyMap = groupPathToConceptSchemePerProperty(service_export_config.export);
+    const propertyMap = groupPathToConceptSchemePerProperty(serviceExportConfig.export);
 
     let accumulatedDiffs;
     if (serviceConfig.useFileDiff) {
@@ -44,7 +44,7 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
     // The triples to push to the publication graph should be equal to
     // - all triples whose ?s link to the concept scheme (through pathToConceptScheme)
     //   (note if no path defined, then this condition returns true) AND
-    // - whose ?p match the properties defined in the service_export_config AND
+    // - whose ?p match the properties defined in the serviceExportConfig AND
     // - who match any of the configured types AND
     // - (should NOT reside exclusively in the publication graph) XOR (reside in a set of predefined graphs)
     //
@@ -57,13 +57,13 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
     for(const property of Object.keys(propertyMap)){
 
       const sourceTriples = await getTriples(serviceConfig,
-                                             service_export_config,
+                                             serviceExportConfig,
                                              property, propertyMap,
                                              conceptSchemeUri,
                                              getScopedSourceTriples);
 
       const publicationGraphTriples = await getTriples(serviceConfig,
-                                                       service_export_config,
+                                                       serviceExportConfig,
                                                        property, propertyMap,
                                                        conceptSchemeUri,
                                                        getScopedPublicationTriples);
@@ -92,7 +92,8 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
 
         sourceTriples.removeCallback();
         publicationGraphTriples.removeCallback();
-      } else {
+      }
+      else {
 
         let diffs = diffTriplesData(serviceConfig, sourceTriples, publicationGraphTriples);
 
@@ -229,7 +230,7 @@ async function createResultsContainer(serviceConfig, task, nTriples, subject, fi
 /*
  * Gets the triples for a property
  */
-async function getTriples(serviceConfig, service_export_config, property, propertyMap, conceptSchemeUri, getTriplesCall ){
+async function getTriples(serviceConfig, serviceExportConfig, property, propertyMap, conceptSchemeUri, getTriplesCall ){
   let sourceTriples;
   if (serviceConfig.useFileDiff) {
     sourceTriples = tmp.fileSync();
