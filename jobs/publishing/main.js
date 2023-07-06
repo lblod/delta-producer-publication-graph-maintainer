@@ -159,8 +159,8 @@ async function foldChangeSet(service_config, delta, config ){
       `;
     };
 
-    const foldedDeletes = await batchedQuery(service_config, queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
-    const foldedInserts = await batchedQuery(service_config, queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
+    const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
+    const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
     return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
   }
   finally {

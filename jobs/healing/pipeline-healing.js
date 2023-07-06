@@ -286,8 +286,7 @@ async function getScopedPublicationTriples(serviceConfig, config, property, publ
   `;
 
   console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await batchedQuery(serviceConfig,
-                                    selectFromPublicationGraph,
+  const result = await batchedQuery(selectFromPublicationGraph,
                                     healingOptionsForProperty.queryChunkSize,
                                     endpoint
                                    );
@@ -359,8 +358,7 @@ async function getScopedSourceTriples(serviceConfig, config, property, publicati
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive queries`);
 
-  const result = await batchedQuery(serviceConfig,
-                                    selectFromDatabase,
+  const result = await batchedQuery(selectFromDatabase,
                                     healingOptionsForProperty.queryChunkSize,
                                     endpoint
                                    );
