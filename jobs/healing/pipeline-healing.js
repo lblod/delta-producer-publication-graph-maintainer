@@ -57,13 +57,11 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
     for(const property of Object.keys(propertyMap)){
 
       const sourceTriples = await getTriples(serviceConfig,
-                                             serviceExportConfig,
                                              property, propertyMap,
                                              conceptSchemeUri,
                                              getScopedSourceTriples);
 
       const publicationGraphTriples = await getTriples(serviceConfig,
-                                                       serviceExportConfig,
                                                        property, propertyMap,
                                                        conceptSchemeUri,
                                                        getScopedPublicationTriples);
@@ -230,7 +228,7 @@ async function createResultsContainer(serviceConfig, task, nTriples, subject, fi
 /*
  * Gets the triples for a property
  */
-async function getTriples(serviceConfig, serviceExportConfig, property, propertyMap, conceptSchemeUri, getTriplesCall ){
+async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri, getTriplesCall ){
   let sourceTriples;
   if (serviceConfig.useFileDiff) {
     sourceTriples = tmp.fileSync();
