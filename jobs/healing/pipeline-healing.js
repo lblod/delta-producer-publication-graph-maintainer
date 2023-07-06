@@ -297,8 +297,18 @@ async function getPublicationTriples(service_config, property, publicationGraph)
  * Gets the source triples for a property and a pathToConceptScheme from the database,
  * for all graphs except the ones exclusively residing in the publication graph
  */
-async function getScopedSourceTriples(service_config, config, property, conceptSchemeUri, publicationGraph, exportConfig ){
-  const { additionalFilter, pathToConceptScheme, graphsFilter, type, strictTypeExport } = config;
+async function getScopedSourceTriples(serviceConfig, config, property, publicationGraph, conceptSchemeUri){
+
+  const { additionalFilter,
+          pathToConceptScheme,
+          graphsFilter,
+          type,
+          strictTypeExport,
+          healingOptions
+        } = config;
+
+  const healingOptionsForProperty = healingOptions && healingOptions[property] ?
+      healingOptions[property] : { 'queryChunkSize': 0 };
 
   let pathToConceptSchemeString = '';
 
@@ -345,11 +355,16 @@ async function getScopedSourceTriples(service_config, config, property, conceptS
      }
   `;
 
-  //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
-  const endpoint = service_config.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
-  console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await query(selectFromDatabase, {}, { sparqlEndpoint: endpoint, mayRetry: true });
-  return reformatQueryResult(result);
+  const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
+  console.log(`Hitting database ${endpoint} with expensive queries`);
+
+  const result = await batchedQuery(serviceConfig,
+                                    selectFromDatabase,
+                                    healingOptionsForProperty.queryChunkSize,
+                                    endpoint
+                                   );
+
+  return reformatQueryResult(result, property);
 }
 
 function arrayToFile(array, file){
