@@ -472,5 +472,5 @@ async function updateDatabase(service_config, task, operation, updates, extraHea
       publicationEndpoint
   );
   //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
-  await createResultsContainer(task, updates, container, resultFileName);
+  await createResultsContainer(serviceConfig, task, updates, container, resultFileName);
 }
