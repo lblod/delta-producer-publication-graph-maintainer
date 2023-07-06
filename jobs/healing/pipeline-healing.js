@@ -7,7 +7,7 @@ import { uniq } from 'lodash';
 import { sparqlEscapeString, sparqlEscapeUri, uuid } from 'mu';
 import { writeTtlFile } from '../../lib/file-helpers';
 import { appendTaskResultFile } from '../../lib/task';
-import { batchedUpdate, serializeTriple, sparqlEscapePredicate } from '../../lib/utils';
+import { batchedUpdate, batchedQuery, serializeTriple, sparqlEscapePredicate, parseResult } from '../../lib/utils';
 import { publishDeltaFiles } from "../../files-publisher/main";
 import {
   DELTA_CHUNK_SIZE,
@@ -23,7 +23,7 @@ const optionsNoOutput = {
   shell: '/bin/bash'
 };
 
-export async function runHealingTask(service_config, service_export_config, task, isInitialSync, publishDelta ) {
+export async function runHealingTask(serviceConfig, service_export_config, task, isInitialSync, publishDelta ) {
 
   try {
     const conceptSchemeUri = service_export_config.conceptScheme;
@@ -34,7 +34,7 @@ export async function runHealingTask(service_config, service_export_config, task
     const propertyMap = groupPathToConceptSchemePerProperty(service_export_config.export);
 
     let accumulatedDiffs;
-    if (service_config.useFileDiff) {
+    if (serviceConfig.useFileDiff) {
       accumulatedDiffs = {inserts: tmp.fileSync(), deletes: tmp.fileSync()};
     } else {
       accumulatedDiffs = {inserts: [], deletes: []};
@@ -69,7 +69,7 @@ export async function runHealingTask(service_config, service_export_config, task
                                                        getScopedPublicationTriples);
 
       console.log(`Calculating diffs for property ${property}, this may take a while`);
-      if (service_config.useFileDiff) {
+      if (serviceConfig.useFileDiff) {
 
         let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
         let newInserts = tmp.fileSync();
@@ -94,7 +94,7 @@ export async function runHealingTask(service_config, service_export_config, task
         publicationGraphTriples.removeCallback();
       } else {
 
-        let diffs = diffTriplesData(service_config, sourceTriples, publicationGraphTriples);
+        let diffs = diffTriplesData(serviceConfig, sourceTriples, publicationGraphTriples);
 
         accumulatedDiffs.deletes = [ ...accumulatedDiffs.deletes, ...diffs.deletes ];
         accumulatedDiffs.inserts = [ ...accumulatedDiffs.inserts, ...diffs.inserts ];
@@ -102,19 +102,19 @@ export async function runHealingTask(service_config, service_export_config, task
       }
     }
 
-    let extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdPublicationGraphMaintenance };
+    let extraHeaders = { 'mu-call-scope-id': serviceConfig.muCallScopeIdPublicationGraphMaintenance };
     if(isInitialSync){
-      extraHeaders = { 'mu-call-scope-id': service_config.muCallScopeIdInitialSync };
+      extraHeaders = { 'mu-call-scope-id': serviceConfig.muCallScopeIdInitialSync };
     }
 
     let publicationEndpoint = PUBLICATION_MU_AUTH_ENDPOINT;
-    if(service_config.skipMuAuthInitialSync && isInitialSync){
+    if(serviceConfig.skipMuAuthInitialSync && isInitialSync){
       console.warn(`Skipping mu-auth when ingesting data, make sure you know what you're doing.`);
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
     let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
-    if (service_config.useFileDiff) {
+    if (serviceConfig.useFileDiff) {
       let deletes = [];
       console.log("Getting data from deletes file");
       let rl = new Readlines(accumulatedDiffs.deletes.name);
@@ -124,18 +124,18 @@ export async function runHealingTask(service_config, service_export_config, task
         deletes.push(JSON.parse(line).nTriple);
         // to make sure the deletes array does not explode in memory we push the update regularly
         if (deletes.length >= fileDiffMaxArraySize) {
-          await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
+          await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, serviceConfig.removalContainer);
           deletes = [];
           part++;
         }
       }
-      await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, service_config.removalContainer);
+      await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, serviceConfig.removalContainer);
     } else {
       let deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
-      await updateDatabase(service_config, task, "DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', service_config.removalContainer);
+      await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', serviceConfig.removalContainer);
     }
 
-    if (service_config.useFileDiff) {
+    if (serviceConfig.useFileDiff) {
       let inserts = [];
       console.log("Getting data from inserts file");
       let rl = new Readlines(accumulatedDiffs.inserts.name);
@@ -145,15 +145,15 @@ export async function runHealingTask(service_config, service_export_config, task
         inserts.push(JSON.parse(line).nTriple);
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
-          await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
+          await updateDatabase(serviceConfig, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, serviceConfig.insertionContainer);
           inserts = [];
           part++;
         }
       }
-      await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, service_config.insertionContainer);
+      await updateDatabase(serviceConfig, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, serviceConfig.insertionContainer);
     } else {
       let inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
-      await updateDatabase(service_config, task, "INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', service_config.insertionContainer);
+      await updateDatabase(serviceConfig, task, "INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', serviceConfig.insertionContainer);
     }
 
     console.log(`Started at ${started}`);
@@ -167,7 +167,7 @@ export async function runHealingTask(service_config, service_export_config, task
         deletes.push(JSON.parse(line).nTriple);
         // to make sure the deletes array does not explode in memory we push the update regularly
         if (deletes.length >= fileDiffMaxArraySize) {
-          await publishDeltaFiles(service_config, {deletes: deletes, inserts: []});
+          await publishDeltaFiles(serviceConfig, {deletes: deletes, inserts: []});
           deletes = [];
         }
       }
@@ -179,13 +179,13 @@ export async function runHealingTask(service_config, service_export_config, task
         inserts.push(JSON.parse(line).nTriple);
         // to make sure the inserts array does not explode in memory we push the update regularly
         if (inserts.length >= fileDiffMaxArraySize) {
-          await publishDeltaFiles(service_config, {inserts: inserts, deletes: []});
+          await publishDeltaFiles(serviceConfig, {inserts: inserts, deletes: []});
           inserts = [];
         }
       }
 
       // push the remaining inserts and deletes
-      await publishDeltaFiles(service_config, {deletes: deletes, inserts: inserts});
+      await publishDeltaFiles(serviceConfig, {deletes: deletes, inserts: inserts});
     }
 
     accumulatedDiffs.inserts.removeCallback();
@@ -216,10 +216,10 @@ function groupPathToConceptSchemePerProperty(config){
   return result;
 }
 
-async function createResultsContainer(service_config, task, nTriples, subject, fileName ){
+async function createResultsContainer(serviceConfig, task, nTriples, subject, fileName ){
   const fileContainer = { id: uuid(), subject };
   fileContainer.uri = `http://data.lblod.info/id/dataContainers/${fileContainer.id}`;
-  const turtleFile = await writeTtlFile(service_config.reportingFilesGraph || task.graph, nTriples.join('\n'), fileName);
+  const turtleFile = await writeTtlFile(serviceConfig.reportingFilesGraph || task.graph, nTriples.join('\n'), fileName);
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
@@ -252,7 +252,7 @@ async function getTriples(serviceConfig, service_export_config, property, proper
       sourceTriples = newSourceTriples;
       scopedSourceTriplesFile.removeCallback();
     } else {
-      const diffs = diffTriplesData(service_config, scopedSourceTriples, sourceTriples);
+      const diffs = diffTriplesData(serviceConfig, scopedSourceTriples, sourceTriples);
       sourceTriples = [ ...sourceTriples, ...diffs.inserts ];
     }
   }
@@ -290,7 +290,6 @@ async function getScopedPublicationTriples(serviceConfig, config, property, publ
                                    );
 
   return reformatQueryResult(result, property);
-  }
 }
 
 /*
@@ -338,7 +337,6 @@ async function getScopedSourceTriples(serviceConfig, config, property, publicati
   // breaking additionalFilter functionality coming from the config file.
   // Yes, this is abstraction leakage. It might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
-
   const selectFromDatabase = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
@@ -412,7 +410,7 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   };
 }
 
-function diffTriplesData(service_config, target, source) {
+function diffTriplesData(serviceConfig, target, source) {
   //Note: this only works correctly if triples have same lexical notation.
   //So think about it, when copy pasting :-)
 
@@ -421,7 +419,7 @@ function diffTriplesData(service_config, target, source) {
     diff.deletes = source;
   } else if (source.length === 0) {
     diff.inserts = target;
-  } else if (service_config.useFileDiff) {
+  } else if (serviceConfig.useFileDiff) {
     console.log(`File based diff: target size is ${target.length}, source size is ${source.length}`);
     // only do the file-based diff when the dataset is large, since otherwise the overhead is too much
     let targetFile = arrayToFile(target, tmp.fileSync());
@@ -476,16 +474,17 @@ function reformatQueryResult( result, predicate = undefined ){
   return triplesData;
 }
 
-async function updateDatabase(service_config, task, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
+async function updateDatabase(serviceConfig, task, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
   console.log(`Starting ${operation.toLowerCase()} batch update`);
-  await batchedUpdate(updates,
-      service_config.publicationGraph,
-      operation,
-      100,
-      service_config.healingPatchGraphBatchSize,
-      extraHeaders,
-      publicationEndpoint
-  );
+  await batchedUpdate(
+    updates,
+    serviceConfig.publicationGraph,
+    operation,
+    100,
+    serviceConfig.healingPatchGraphBatchSize,
+    extraHeaders,
+    publicationEndpoint);
+
   //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
   await createResultsContainer(serviceConfig, task, updates, container, resultFileName);
 }
