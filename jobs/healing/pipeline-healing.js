@@ -476,7 +476,9 @@ function reformatQueryResult( result, predicate = undefined ){
 
 async function updateDatabase(serviceConfig, task, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
   console.log(`Starting ${operation.toLowerCase()} batch update`);
+
   await batchedUpdate(
+    serviceConfig,
     updates,
     serviceConfig.publicationGraph,
     operation,
