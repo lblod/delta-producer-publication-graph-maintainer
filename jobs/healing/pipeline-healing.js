@@ -255,40 +255,32 @@ async function getSourceTriples(service_config, service_export_config, property,
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
-async function getPublicationTriples(service_config, property, publicationGraph){
-  console.log(`Publication triples using file? ${service_config.useFileDiff}`);
-  const endpoint = service_config.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
+async function getScopedPublicationTriples(serviceConfig, config, property, publicationGraph){
+  const { type, healingOptions } = config;
+
+  const healingOptionsForProperty = healingOptions && healingOptions[property] ?
+      healingOptions[property] : { 'queryChunkSize': 0 };
+
+  console.log(`Publication triples using file? ${serviceConfig.useFileDiff}`);
+  const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
+
   const selectFromPublicationGraph = `
-   SELECT DISTINCT ?subject ?object WHERE {
+   SELECT DISTINCT ?subject ?predicate ?object WHERE {
     GRAPH ${sparqlEscapeUri(publicationGraph)}{
-      ?subject ${sparqlEscapeUri(property)} ?object.
+      BIND(${sparqlEscapeUri(property)} as ?predicate)
+      ?subject a ${sparqlEscapeUri(type)}.
+      ?subject ?predicate ?object.
     }
    }
   `;
-  if (service_config.useFileDiff) {
-    let outputFile = tmp.fileSync();
-    let offSet = 0;
-    let maxTriples = DELTA_CHUNK_SIZE;
-    console.log(`Hitting database ${endpoint} with paged expensive queries`);
-    let stop = false;
-    while (!stop) {
-      const selectFromPublicationGraphPaged = `
-      ${selectFromPublicationGraph}
-       ORDER BY ?subject
-       LIMIT ${maxTriples}
-       OFFSET ${offSet}
-    `;
-      const result = await query(selectFromPublicationGraphPaged, {}, { sparqlEndpoint: endpoint, mayRetry: true });
-      let newTriples = reformatQueryResult(result, property);
-      arrayToFile(newTriples, outputFile);
-      stop = newTriples.length < maxTriples;
-      offSet += maxTriples;
-    }
-    return outputFile;
-  } else {
-  //Note: this might explode memory, but now, a paginated fetch is extremely slow. (because sorting)
+
   console.log(`Hitting database ${endpoint} with expensive query`);
-  const result = await query(selectFromPublicationGraph, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+  const result = await batchedQuery(serviceConfig,
+                                    selectFromPublicationGraph,
+                                    healingOptionsForProperty.queryChunkSize,
+                                    endpoint
+                                   );
+
   return reformatQueryResult(result, property);
   }
 }
