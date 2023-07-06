@@ -232,12 +232,11 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
     if (serviceConfig.useFileDiff) {
       let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
       const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
-      let newSourceTriples = tmp.fileSync();
-      execSync(`cat ${sourceTriples.name} ${diffs.inserts.name} | tee ${newSourceTriples.name}`, optionsNoOutput);
+
+      sourceTriples = mergeFiles(sourceTriples, diffs.inserts, true);
+
       diffs.inserts.removeCallback();
       diffs.deletes.removeCallback();
-      sourceTriples.removeCallback();
-      sourceTriples = newSourceTriples;
       scopedSourceTriplesFile.removeCallback();
     } else {
       const diffs = diffTriplesData(serviceConfig, scopedSourceTriples, sourceTriples);
