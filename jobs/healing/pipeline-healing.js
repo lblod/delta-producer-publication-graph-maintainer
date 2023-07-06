@@ -472,7 +472,6 @@ async function updateDatabase(serviceConfig, task, operation, updates, extraHead
   console.log(`Starting ${operation.toLowerCase()} batch update`);
 
   await batchedUpdate(
-    serviceConfig,
     updates,
     serviceConfig.publicationGraph,
     operation,
