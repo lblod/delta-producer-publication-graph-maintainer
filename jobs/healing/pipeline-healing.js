@@ -70,23 +70,9 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
       if (serviceConfig.useFileDiff) {
 
         let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
-        let newInserts = tmp.fileSync();
 
-        execSync(`cat ${accumulatedDiffs.inserts.name} ${fileDiff.inserts.name} | tee ${newInserts.name}`, optionsNoOutput);
-
-        fileDiff.inserts.removeCallback();
-        accumulatedDiffs.inserts.removeCallback();
-
-        accumulatedDiffs.inserts = newInserts;
-
-        let newDeletes = tmp.fileSync();
-
-        execSync(`cat ${accumulatedDiffs.deletes.name} ${fileDiff.deletes.name} | tee ${newDeletes.name}`, optionsNoOutput);
-
-        fileDiff.deletes.removeCallback();
-        accumulatedDiffs.deletes.removeCallback();
-
-        accumulatedDiffs.deletes = newDeletes;
+        accumulatedDiffs.inserts = mergeFiles(accumulatedDiffs.inserts, fileDiff.inserts, true);
+        accumulatedDiffs.deletes = mergeFiles(accumulatedDiffs.deletes, fileDiff.deletes, true);
 
         sourceTriples.removeCallback();
         publicationGraphTriples.removeCallback();
@@ -479,4 +465,16 @@ async function updateDatabase(serviceConfig, task, operation, updates, extraHead
 
   //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
   await createResultsContainer(serviceConfig, task, updates, container, resultFileName);
+}
+/*
+ * Takes two files, merges them to a new file
+ */
+function mergeFiles(fileA, fileB, cleanAfterMerge = false) {
+  let newFile = tmp.fileSync();
+  execSync(`cat ${fileA.name} ${fileB.name} | tee ${newFile.name}`, SHELL_CONFIG || {});
+  if(cleanAfterMerge) {
+    fileA.removeCallback();
+    fileB.removeCallback();
+  }
+  return newFile;
 }
