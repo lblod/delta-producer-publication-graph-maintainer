@@ -130,7 +130,8 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
         }
       }
       await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, `removed-triples-part-${part}.ttl`, serviceConfig.removalContainer);
-    } else {
+    }
+    else {
       let deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
       await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', serviceConfig.removalContainer);
     }
@@ -139,6 +140,7 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
       let inserts = [];
       console.log("Getting data from inserts file");
       let rl = new Readlines(accumulatedDiffs.inserts.name);
+
       let line, part = 0;
       while ((line = rl.next())) {
         line = line.toString();
@@ -151,7 +153,8 @@ export async function runHealingTask(serviceConfig, service_export_config, task,
         }
       }
       await updateDatabase(serviceConfig, task, "INSERT", inserts, extraHeaders, publicationEndpoint, `inserted-triples-part-${part}.ttl`, serviceConfig.insertionContainer);
-    } else {
+    }
+    else {
       let inserts = accumulatedDiffs.inserts.map(t => t.nTriple);
       await updateDatabase(serviceConfig, task, "INSERT", inserts, extraHeaders, publicationEndpoint, 'inserted-triples.ttl', serviceConfig.insertionContainer);
     }
@@ -456,22 +459,13 @@ function diffTriplesData(serviceConfig, target, source) {
   return diff;
 }
 
-function reformatQueryResult( result, predicate = undefined ){
-  let triplesData = [];
-
-  if(result.results && result.results.bindings && result.results.bindings.length){
-    const triples = result.results.bindings;
-    triplesData = triples.map(t => {
+function reformatQueryResult( triples ) {
+  return triples.map(t => {
       return {
-        nTriple: serializeTriple({
-          subject: t.subject, predicate: predicate ? {type: "uri", value: predicate} : t.predicate, object: t.object
-        })
-        // originalFormat: t
+        nTriple: serializeTriple(t),
+        originalFormat: t
       };
     });
-  }
-
-  return triplesData;
 }
 
 async function updateDatabase(serviceConfig, task, operation, updates, extraHeaders, publicationEndpoint, resultFileName, container) {
