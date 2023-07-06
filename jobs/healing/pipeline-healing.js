@@ -215,25 +215,24 @@ async function createResultsContainer(service_config, task, nTriples, subject, f
 }
 
 /*
- * Gets the triples for a property, which are considered 'Ground Truth'
+ * Gets the triples for a property
  */
-async function getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri ){
+async function getTriples(serviceConfig, service_export_config, property, propertyMap, conceptSchemeUri, getTriplesCall ){
   let sourceTriples;
-  if (service_config.useFileDiff) {
+  if (serviceConfig.useFileDiff) {
     sourceTriples = tmp.fileSync();
   } else {
     sourceTriples = [];
   }
   for(const config of propertyMap[property]){
-    let scopedSourceTriples = await getScopedSourceTriples(service_config,
-                                                             config,
-                                                             property,
-                                                             conceptSchemeUri,
-                                                             service_config.publicationGraph,
-                                                             service_export_config);
+    let scopedSourceTriples = await getTriplesCall(serviceConfig,
+                                                           config,
+                                                           property,
+                                                           serviceConfig.publicationGraph,
+                                                           conceptSchemeUri);
     console.log(`Number of source triples: ${scopedSourceTriples.length}`);
 
-    if (service_config.useFileDiff) {
+    if (serviceConfig.useFileDiff) {
       let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
       const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
       let newSourceTriples = tmp.fileSync();
