@@ -324,9 +324,9 @@ async function getScopedSourceTriples(service_config, config, property, conceptS
     graphsFilterStr = `FILTER ( ${graphsFilterStr} )`;
   }
 
-  // Important note: renaming variables in the next query, will very likely break
-  // additionalFilter functionality. So better leave it as is.
-  // This is abstraction leakage, it might be in need in further thinking, but
+  // IMPORTANT NOTE: don't rename "?variables" in this query, as it risks
+  // breaking additionalFilter functionality coming from the config file.
+  // Yes, this is abstraction leakage. It might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
 
   const selectFromDatabase = `
