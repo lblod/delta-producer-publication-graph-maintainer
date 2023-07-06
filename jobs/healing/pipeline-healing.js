@@ -56,8 +56,17 @@ export async function runHealingTask(service_config, service_export_config, task
     // The additions are A\B, and removals are B\A
     for(const property of Object.keys(propertyMap)){
 
-      const sourceTriples = await getSourceTriples(service_config, service_export_config, property, propertyMap, conceptSchemeUri);
-      const publicationGraphTriples = await getPublicationTriples(service_config, property, service_config.publicationGraph);
+      const sourceTriples = await getTriples(serviceConfig,
+                                             service_export_config,
+                                             property, propertyMap,
+                                             conceptSchemeUri,
+                                             getScopedSourceTriples);
+
+      const publicationGraphTriples = await getTriples(serviceConfig,
+                                                       service_export_config,
+                                                       property, propertyMap,
+                                                       conceptSchemeUri,
+                                                       getScopedPublicationTriples);
 
       console.log(`Calculating diffs for property ${property}, this may take a while`);
       if (service_config.useFileDiff) {
