@@ -17,13 +17,13 @@ import {
   VIRTUOSO_ENDPOINT
 } from "../../env-config";
 
-const optionsNoOutput = {
+const SHELL_CONFIG = {
   encoding: 'utf-8',
-  stdio: ['ignore', 'ignore', 'ignore'],
+  stdio: ['ignore', 'ignore', 'ignore'], //no output
   shell: '/bin/bash'
 };
 
-export async function runHealingTask(serviceConfig, serviceExportConfig, task, isInitialSync, publishDelta ) {
+export async function runHealingTask(serviceConfig, serviceExportConfig, task, isInitialSync, publishDelta) {
 
   try {
     const conceptSchemeUri = serviceExportConfig.conceptScheme;
@@ -377,14 +377,14 @@ function diffFiles(targetFile, sourceFile, S="50%", T="/tmp"){
   let sorted1 = tmp.fileSync();
   let sorted2 = tmp.fileSync();
 
-  execSync(`sort ${targetFile.name} -S ${S} -T ${T} -o ${sorted1.name}`, optionsNoOutput);
-  execSync(`sort ${sourceFile.name} -S ${S} -T ${T} -o ${sorted2.name}`, optionsNoOutput);
+  execSync(`sort ${targetFile.name} -S ${S} -T ${T} -o ${sorted1.name}`, SHELL_CONFIG);
+  execSync(`sort ${sourceFile.name} -S ${S} -T ${T} -o ${sorted2.name}`, SHELL_CONFIG);
 
   let output1 = tmp.fileSync();
   let output2 = tmp.fileSync();
 
-  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`, optionsNoOutput);
-  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`, optionsNoOutput);
+  execSync(`comm -23 ${sorted1.name} ${sorted2.name} | tee ${output1.name}`, SHELL_CONFIG);
+  execSync(`comm -13 ${sorted1.name} ${sorted2.name} | tee ${output2.name}`, SHELL_CONFIG);
 
   sorted1.removeCallback();
   sorted2.removeCallback();
@@ -465,6 +465,7 @@ async function updateDatabase(serviceConfig, task, operation, updates, extraHead
   //We will keep two containers to attach to the task, so we have better reporting on what has been corrected
   await createResultsContainer(serviceConfig, task, updates, container, resultFileName);
 }
+
 /*
  * Takes two files, merges them to a new file
  */
