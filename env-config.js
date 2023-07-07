@@ -56,7 +56,7 @@ export class Config {
 
         this.healingPatchGraphBatchSize = parseInt(configData.healingPatchGraphBatchSize || 100);
         this.updatePublicationGraphSleep = parseInt(configData.updatePublicationGraphSleep || 1000);
-        this.skipMuAuthDeltaFolding = configData.skipMuAuthDeltaFolding == 'true' ? true : false;
+        this.skipMuAuthDeltaFolding = configData.skipMuAuthDeltaFolding || false;
 
         this.muCallScopeIdPublicationGraphMaintenance = configData.muCallScopeIdPublicationGraphMaintenance
             || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
@@ -65,7 +65,7 @@ export class Config {
             || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
         //mainly for debugging purposes
-        this.waitForInitialSync = configData.waitForInitialSync == 'false' ? false : true;
+        this.waitForInitialSync = configData.waitForInitialSync || false;
 
         if (!configData.publicationGraph)
             throw `Expected 'publicationGraph' should be provided.`;
@@ -83,9 +83,9 @@ export class Config {
          * START EXPERIMENTAL FEATURES
          */
         //SKIP MU_AUTH
-        this.useVirtuosoForExpensiveSelects = configData.useVirtuosoForExpensiveSelects === 'true';
-        this.skipMuAuthInitialSync = configData.skipMuAuthInitialSync === 'true';
-        this.skipMuAuthHealing = configData.skipMuAuthHealing === 'true';
+        this.useVirtuosoForExpensiveSelects = configData.useVirtuosoForExpensiveSelects || false;
+        this.skipMuAuthInitialSync = configData.skipMuAuthInitialSync || false;
+      this.skipMuAuthHealing = configData.skipMuAuthHealing || false;
 
         //FILES PUBLISHER
         this.serveDeltaFiles = configData.serveDeltaFiles || false;
@@ -95,7 +95,7 @@ export class Config {
         this.relativeFilePath = configData.relativeFilePath || 'deltas';
         this.filesGraph = configData.filesGraph || 'http://mu.semte.ch/graphs/public';
 
-        this.useFileDiff = configData.useFileDiff === "true";
+        this.useFileDiff = configData.useFileDiff || false;
 
         /*
          * END EXPERIMENTAL FEATURES
