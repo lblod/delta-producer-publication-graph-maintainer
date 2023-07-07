@@ -1,5 +1,6 @@
-import { publishDeltaFiles } from "../../files-publisher/main";
 import { chunk } from 'lodash';
+import { publishDeltaFiles } from "../../files-publisher/main";
+import { appendPublicationGraph } from '../utils';
 
 import {
   groupPathToConceptSchemePerProperty,
@@ -13,8 +14,6 @@ import {
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
 } from "../../env-config";
-
-import { appendPublicationGraph } from '../utils';
 
 /*
  * This function runs the healing task in the 'classic' way; i.e with DB and in memory diffing
