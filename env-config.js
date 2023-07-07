@@ -85,6 +85,7 @@ export class Config {
         //SKIP MU_AUTH
         this.useVirtuosoForExpensiveSelects = configData.useVirtuosoForExpensiveSelects === 'true';
         this.skipMuAuthInitialSync = configData.skipMuAuthInitialSync === 'true';
+        this.skipMuAuthHealing = configData.skipMuAuthHealing === 'true';
 
         //FILES PUBLISHER
         this.serveDeltaFiles = configData.serveDeltaFiles || false;
