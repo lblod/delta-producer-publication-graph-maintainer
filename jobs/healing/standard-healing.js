@@ -6,13 +6,15 @@ import {
   getScopedSourceTriples,
   getScopedPublicationTriples,
   updateDatabase
-}  from './utils';
+} from './utils';
 
 import {
   DELTA_CHUNK_SIZE,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
 } from "../../env-config";
+
+import { appendPublicationGraph } from '../utils';
 
 /*
  * This function runs the healing task in the 'classic' way; i.e with DB and in memory diffing
@@ -143,7 +145,8 @@ function diffTriplesData(serviceConfig, target, source) {
 async function pushToDeltaFiles(serviceConfig, operation, triples, fileDiffMaxArraySize) {
   let chunkedTriples = chunk(triples, fileDiffMaxArraySize);
   // To make sure the array does not explode in memory we push the update regularly
-  for(const triplesBatch of chunkedTriples) {
+  for(let triplesBatch of chunkedTriples) {
+    triplesBatch = triplesBatch.map(t => appendPublicationGraph(serviceConfig, t.originalFormat));
     const data = operation == "DELETE" ?
           { deletes: triplesBatch, inserts: []} : {deletes: [], inserts: triplesBatch};
     await publishDeltaFiles(serviceConfig, data);
