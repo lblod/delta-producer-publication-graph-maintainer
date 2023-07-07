@@ -170,6 +170,7 @@ The proporties are:
 * `healingJobOperation (required)`: URI of the job operation for healing operation to listen to.
 * `useVirtuosoForExpensiveSelects (default: false)`: Whether to use virtuoso for expensive selects.
 * `skipMuAuthInitialSync: Initial sync is expensive. Mu-auth can be skipped here. But be aware about what this implies!`
+* `skipMuAuthHealing: Skip mu-auth when healing publication graph. But be aware about what this implies!`
 * `serveDeltaFiles (default: false)`: Whether to serve delta files.
 * `logOutgoingDelta (default: false)`: Whether to log the delta messages as sent
 * `deltaInterval (default: 1000)`: Interval between outgoing delta messages

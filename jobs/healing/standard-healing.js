@@ -76,6 +76,10 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
       console.warn(`Skipping mu-auth when ingesting data, make sure you know what you're doing.`);
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
+    else if(serviceConfig.skipMuAuthHealing && !isInitialSync) {
+      console.warn(`Skipping mu-auth when healing data, make sure you know what you're doing.`);
+      publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
+    }
 
     let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
 
