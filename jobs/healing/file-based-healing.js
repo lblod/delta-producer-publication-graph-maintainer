@@ -1,6 +1,7 @@
 import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
 import { publishDeltaFiles } from "../../files-publisher/main";
+import { appendPublicationGraph } from '../utils';
 
 import {
   groupPathToConceptSchemePerProperty,
@@ -225,9 +226,10 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
   let line;
   while ((line = rl.next())) {
     line = line.toString();
-    triples.push(JSON.parse(line).nTriple);
+    triples.push(JSON.parse(line).originalFormat);
     // to make sure the deletes does not explode in memory we push the update regularly
     if (triples.length >= fileDiffMaxArraySize) {
+      triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
       const data = operation == "DELETE" ?
             { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
       await publishDeltaFiles(serviceConfig, data);
@@ -236,6 +238,7 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
   }
 
   // push the remaining inserts and deletes
+  triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
   const data = operation == "DELETE" ?
         { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
   await publishDeltaFiles(serviceConfig, data);
