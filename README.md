@@ -205,9 +205,9 @@ The proporties are:
         "publisherUri": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
         "queuePollInterval": 3000,
         "relativeFilePath": "deltas/besluiten",
-        "serveDeltaFiles": "true",
-        "skipMuAuthInitialSync": "false",
-        "useVirtuosoForExpensiveSelects": "true"
+        "serveDeltaFiles": true,
+        "skipMuAuthInitialSync": false,
+        "useVirtuosoForExpensiveSelects": true
     },
 ```
 
