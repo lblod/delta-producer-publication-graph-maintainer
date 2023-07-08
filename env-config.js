@@ -85,7 +85,7 @@ PREFIX dbpedia: <http://dbpedia.org/resource/>
     //SKIP MU_AUTH
     this.useVirtuosoForExpensiveSelects = configData.useVirtuosoForExpensiveSelects || false;
     this.skipMuAuthInitialSync = configData.skipMuAuthInitialSync || false;
-  this.skipMuAuthHealing = configData.skipMuAuthHealing || false;
+    this.skipMuAuthHealing = configData.skipMuAuthHealing || false;
 
     //FILES PUBLISHER
     this.serveDeltaFiles = configData.serveDeltaFiles || false;
