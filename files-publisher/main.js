@@ -5,31 +5,37 @@ import {LOG_INCOMING_DELTA} from "../env-config";
 const cache = new DeltaCache();
 let hasTimeout = null;
 
-export async function publishDeltaFiles(service_config, delta ){
+export async function publishDeltaFiles(service_config, delta, generateOntheSpot = false ){
   if((delta.inserts.length || delta.deletes.length)){
     if (LOG_INCOMING_DELTA) {
       console.log(`Receiving delta ${JSON.stringify(delta)}`);
     }
 
-    const processDelta = async function() {
-      try {
+    if(generateOntheSpot) {
+      cache.push(delta);
+      await cache.generateDeltaFile(service_config);
+    }
+    else {
+      const processDelta = async function() {
+        try {
 
-        if (service_config.logOutgoingDelta) {
-          console.log(`Pushing onto cache ${JSON.stringify(delta)}`);
+          if (service_config.logOutgoingDelta) {
+            console.log(`Pushing onto cache ${JSON.stringify(delta)}`);
+          }
+
+          cache.push( delta );
+
+          if( !hasTimeout ){
+            triggerTimeout(service_config);
+          }
         }
-
-        cache.push( delta );
-
-        if( !hasTimeout ){
-          triggerTimeout(service_config);
+        catch(e){
+          console.error(`General error processing delta ${e}`);
+          await storeError(service_config, e);
         }
-      }
-      catch(e){
-        console.error(`General error processing delta ${e}`);
-        await storeError(service_config, e);
-      }
-    };
-    processDelta();  // execute async to batch published data in files
+      };
+      processDelta();  // execute async to batch published data in files
+    }
   }
 }
 
