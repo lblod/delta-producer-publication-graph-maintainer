@@ -92,7 +92,7 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
     console.log(`Started at ${started}`);
     console.log(`Ended at ${new Date()}`);
 
-    if (publishDelta) {
+    if (publishDelta && !isInitialSync) {
       await pushToDeltaFiles(serviceConfig, "DELETE", accumulatedDiffs.deletes, fileDiffMaxArraySize);
       await pushToDeltaFiles(serviceConfig, "INSERT", accumulatedDiffs.inserts, fileDiffMaxArraySize);
     }
