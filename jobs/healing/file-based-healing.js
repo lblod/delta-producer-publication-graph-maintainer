@@ -191,12 +191,14 @@ async function updatePublicationGraph(
   const container = operation == "DELETE" ? serviceConfig.removalContainer : serviceConfig.insertionContainer;
   let rl = new Readlines(filePointer.name);
   let line, part = 0;
+  let linesCounter = 0;
 
   while ((line = rl.next())) {
     line = line.toString();
     triples.push(JSON.parse(line).nTriple);
+    linesCounter++;
     // to make sure the deletes array does not explode in memory we push the update regularly
-    if (triples.length >= fileDiffMaxArraySize) {
+    if (linesCounter >= fileDiffMaxArraySize) {
       await updateDatabase(
         serviceConfig,
         task,
@@ -209,6 +211,7 @@ async function updatePublicationGraph(
      );
       triples = [];
       part++;
+      linesCounter = 0;
     }
   }
 
@@ -227,17 +230,19 @@ async function updatePublicationGraph(
 async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffMaxArraySize) {
   let triples = [];
   let rl = new Readlines(filePointer.name);
-  let line;
+  let line, linesCounter = 0; //keep track of the amount of lines read, since performance
   while ((line = rl.next())) {
     line = line.toString();
     triples.push(JSON.parse(line).originalFormat);
+    linesCounter++;
     // to make sure the deletes does not explode in memory we push the update regularly
-    if (triples.length >= fileDiffMaxArraySize) {
-      triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
+    triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
+    if (linesCounter >= fileDiffMaxArraySize) {
       const data = operation == "DELETE" ?
             { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
       await publishDeltaFiles(serviceConfig, data);
       triples = [];
+      linesCounter = 0;
     }
   }
 
