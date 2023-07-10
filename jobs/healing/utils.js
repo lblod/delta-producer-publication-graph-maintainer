@@ -99,9 +99,13 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
 
   // We don't know in what graph the triples are, but we know how they are connected to
   // the concept scheme.
- // What we certainly don't want, are triples only living in the publication-graph
+  // What we certainly don't want, are triples only living in the publication-graph
+  let bindGraphStatement = ''; // if only one graph needs to be filtered, we bind it for performance
   let graphsFilterStr = `FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))`;
-  if(graphsFilter.length){
+  if(graphsFilter.length == 1) {
+    bindGraphStatement = `BIND(${sparqlEscapeUri(graphsFilter[0])} as ?graph)`;
+  }
+  else if(graphsFilter.length > 1){
     //Else use the provided graphs filter
     graphsFilterStr = graphsFilter
       .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
@@ -116,6 +120,7 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
   const selectFromDatabase = `
     SELECT DISTINCT ?subject ?predicate ?object WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
+      ${bindGraphStatement}
       ${strictTypeFilter}
       ?subject a ${sparqlEscapeUri(type)}.
       GRAPH ?graph {
@@ -125,7 +130,7 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
 
       ${pathToConceptSchemeString}
 
-      ${graphsFilterStr}
+      ${bindGraphStatement ? '' : graphsFilterStr}
      }
   `;
 
