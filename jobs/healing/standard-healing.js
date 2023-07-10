@@ -152,6 +152,6 @@ async function pushToDeltaFiles(serviceConfig, operation, triples, fileDiffMaxAr
     triplesBatch = triplesBatch.map(t => appendPublicationGraph(serviceConfig, t.originalFormat));
     const data = operation == "DELETE" ?
           { deletes: triplesBatch, inserts: []} : {deletes: [], inserts: triplesBatch};
-    await publishDeltaFiles(serviceConfig, data);
+    await publishDeltaFiles(serviceConfig, data, true);
   }
 }
