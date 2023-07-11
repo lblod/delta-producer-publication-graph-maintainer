@@ -8,8 +8,8 @@ export const PUBLICATION_VIRTUOSO_ENDPOINT = process.env.PUBLICATION_VIRTUOSO_EN
 export const PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDPOINT || MU_AUTH_ENDPOINT;
 //FILES PUBLISHER
 export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
-export const CACHE_CHUNK_STATEMENT = parseInt(process.env.CACHE_CHUNK_STATEMENT || 100);
-export const CACHE_CHUNK_ARRAY = parseInt(process.env.CACHE_CHUNK_ARRAY || 10);
+export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE || 100);
+export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
 export const DELTA_CHUNK_SIZE = parseInt(process.env.DELTA_CHUNK_SIZE || 1000000);
 
