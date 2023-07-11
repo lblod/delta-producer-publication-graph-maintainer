@@ -54,7 +54,7 @@ PREFIX dbpedia: <http://dbpedia.org/resource/>
     this.reportingFilesGraph = configData.reportingFilesGraph;
     this.queuePollInterval = configData.queuePollInterval || 60000;
 
-    this.healingPatchGraphBatchSize = parseInt(configData.healingPatchGraphBatchSize || 100);
+    this.healingPatchGraphBatchSize = parseInt(configData.healingPatchGraphBatchSize || 1000);
     this.updatePublicationGraphSleep = parseInt(configData.updatePublicationGraphSleep || 1000);
     this.skipMuAuthDeltaFolding = configData.skipMuAuthDeltaFolding || false;
 
