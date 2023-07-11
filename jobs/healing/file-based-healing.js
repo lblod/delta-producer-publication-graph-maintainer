@@ -235,9 +235,9 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
     line = line.toString();
     triples.push(JSON.parse(line).originalFormat);
     linesCounter++;
-    // to make sure the deletes does not explode in memory we push the update regularly
-    triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
     if (linesCounter >= fileDiffMaxArraySize) {
+      // to make sure the deletes does not explode in memory we push the update regularly
+      triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
       const data = operation == "DELETE" ?
             { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
       await publishDeltaFiles(serviceConfig, data);
