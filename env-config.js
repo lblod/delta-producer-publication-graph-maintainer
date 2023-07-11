@@ -11,7 +11,6 @@ export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'tr
 export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE || 100);
 export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
-export const DELTA_CHUNK_SIZE = parseInt(process.env.DELTA_CHUNK_SIZE || 1000000);
 
 export class Config {
   constructor(configData) {
@@ -54,7 +53,8 @@ PREFIX dbpedia: <http://dbpedia.org/resource/>
     this.reportingFilesGraph = configData.reportingFilesGraph;
     this.queuePollInterval = configData.queuePollInterval || 60000;
 
-    this.healingPatchGraphBatchSize = parseInt(configData.healingPatchGraphBatchSize || 1000);
+    this.healingMaxTriplesInMemory = parseInt(configData.healingMaxTriplesInMemory || 100000);
+    this.healingInitialBatchSizeInsert = parseInt(configData.healingInitialBatchSizeInsert || 1000);
     this.updatePublicationGraphSleep = parseInt(configData.updatePublicationGraphSleep || 1000);
     this.skipMuAuthDeltaFolding = configData.skipMuAuthDeltaFolding || false;
 

@@ -159,8 +159,7 @@ The deltastream configuration allows for multiple deltastreams in one instance, 
 The json file represents a dictionary of service configurations with the key being the name of the service and the value the configuration.
 The proporties are:
 * `jobsGraph (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
-* `errorCreatorUri (default: "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer")`: URI of the creator of errors
-* `healingPatchGraphBatchSize (default: 100)`: Size of insert/delete batches.
+* `errorCreatorUri (default: "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer")`: URI of the creator of errors.
 * `updatePublicationGraphSleep (default: 1000)`: Sleep between batch updates in the update of the publication graph
 * `muCallScopeIdPublicationGraphMaintenance (default: http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance)`: can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
 * `muCallScopeIdInitialSync (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
@@ -221,7 +220,6 @@ The following enviroment variables can be optionally configured:
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
-* `DELTA_CHUNK_SIZE (default: 1000000)`: The maximum size of deltas that are published
 
 ### API
 #### POST /delta

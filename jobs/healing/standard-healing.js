@@ -10,7 +10,6 @@ import {
 } from './utils';
 
 import {
-  DELTA_CHUNK_SIZE,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
 } from "../../env-config";
@@ -81,7 +80,7 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
       publicationEndpoint = PUBLICATION_VIRTUOSO_ENDPOINT;
     }
 
-    let fileDiffMaxArraySize = DELTA_CHUNK_SIZE;
+    let fileDiffMaxArraySize = serviceConfig.healingMaxTriplesInMemory;
 
     let deletes = accumulatedDiffs.deletes.map(t => t.nTriple);
     await updateDatabase(serviceConfig, task, "DELETE", deletes, extraHeaders, publicationEndpoint, 'removed-triples.ttl', serviceConfig.removalContainer);

@@ -162,7 +162,7 @@ export async function updateDatabase(serviceConfig, task, operation, updates, ex
     serviceConfig.publicationGraph,
     operation,
     100,
-    serviceConfig.healingPatchGraphBatchSize,
+    serviceConfig.healingInitialBatchSizeInsert,
     extraHeaders,
     publicationEndpoint);
 
