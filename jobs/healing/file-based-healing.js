@@ -239,7 +239,7 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
       triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
       const data = operation == "DELETE" ?
             { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
-      await publishDeltaFiles(serviceConfig, data);
+      await publishDeltaFiles(serviceConfig, data, true);
       triples = [];
       linesCounter = 0;
     }
