@@ -17,18 +17,18 @@ export class Config {
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri || 'http://data.lblod.info/services/loket-producer';
     this.prefixes = `
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-PREFIX oslc: <http://open-services.net/ns/core#>
-PREFIX cogs: <http://vocab.deri.ie/cogs#>
-PREFIX adms: <http://www.w3.org/ns/adms#>
-PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
-PREFIX dbpedia: <http://dbpedia.org/resource/>
-`;
+      PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+      PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
+      PREFIX dct: <http://purl.org/dc/terms/>
+      PREFIX prov: <http://www.w3.org/ns/prov#>
+      PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+      PREFIX oslc: <http://open-services.net/ns/core#>
+      PREFIX cogs: <http://vocab.deri.ie/cogs#>
+      PREFIX adms: <http://www.w3.org/ns/adms#>
+      PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
+      PREFIX dbpedia: <http://dbpedia.org/resource/>
+    `;
     this.errorUriPrefix = 'http://redpencil.data.gift/id/publication-maintenance/error/';
     this.jobsGraph = configData.jobsGraph || 'http://mu.semte.ch/graphs/system/jobs';
     this.jobType = 'http://vocab.deri.ie/cogs#Job';
