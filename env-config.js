@@ -16,6 +16,7 @@ export class Config {
   constructor(configData) {
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri || 'http://data.lblod.info/services/loket-producer';
+    //TODO: why here?
     this.prefixes = `
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
       PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
