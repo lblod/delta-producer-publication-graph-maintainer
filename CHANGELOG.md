@@ -1,6 +1,15 @@
-# 0.16.0
+# Changelog
 
-* BREAKING CHANGE: configuration is now extracted from the docker-compose environment variables
-     - You must update your configuration (see readme.md)
-     - Only one container is necessary (no need to add one container per service)
-  
+## 1.0.0 (2023-07-13)
+
+- This version introduces a new feature: file-based healing. This is primarily aimed at improving performance when dealing with large datasets.
+- In addition, this version includes a range of corrections and bug fixes from the `v0.16.x` series.
+  - If you're considering an upgrade from a version prior to `v0.16.x`, it's recommended to directly upgrade to `1.0.x`.
+  - Please note, any breaking changes introduced in `v0.16.x` are still relevant in this version.
+- Various performance tweaks.
+
+## 0.16.x (2023-06-xx)
+
+- **BREAKING CHANGE**: Configuration is now extracted from the environment variables of the Docker Compose setup.
+     - You will need to update your configuration as per the instructions in readme.md.
+     - The updated configuration requires only one container (eliminating the need for an additional container for each service).
