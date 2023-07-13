@@ -3,7 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
-import {CACHE_CHUNK_ARRAY, CACHE_CHUNK_STATEMENT, PRETTY_PRINT_DIFF_JSON} from "../env-config";
+import {MAX_DELTAS_PER_FILE, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE, PRETTY_PRINT_DIFF_JSON} from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -149,8 +149,8 @@ function chunkCache(service_config, cache ) {
   for(const entry of cache){
 
     //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
-    const insertChunks = _.chunk(entry.inserts, CACHE_CHUNK_STATEMENT);
-    const deleteChunks = _.chunk(entry.deletes, CACHE_CHUNK_STATEMENT);
+    const insertChunks = _.chunk(entry.inserts, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE);
+    const deleteChunks = _.chunk(entry.deletes, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE);
 
     if(deleteChunks.length > 1 || insertChunks.length > 1 ){
       for(const deleteChunk of deleteChunks){
@@ -167,5 +167,5 @@ function chunkCache(service_config, cache ) {
       allChunks.push(entry);
     }
   }
-  return _.chunk(allChunks, CACHE_CHUNK_ARRAY);
+  return _.chunk(allChunks, MAX_DELTAS_PER_FILE);
 }

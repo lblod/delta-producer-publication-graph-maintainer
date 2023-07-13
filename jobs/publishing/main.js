@@ -26,7 +26,7 @@ export async function updatePublicationGraph(service_config, service_export_conf
           .value();
 
     if(deletes.length){
-      await batchedUpdate(service_config, deletes.map(service_config, t => serializeTriple(t)),
+      await batchedUpdate(deletes.map(service_config, t => serializeTriple(t)),
                           service_config.publicationGraph,
                           'DELETE',
                           service_config.updatePublicationGraphSleep,
@@ -37,7 +37,7 @@ export async function updatePublicationGraph(service_config, service_export_conf
     }
 
     if(inserts.length){
-      await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
+      await batchedUpdate(inserts.map(t => serializeTriple(t)),
                           service_config.publicationGraph,
                           'INSERT',
                           service_config.updatePublicationGraphSleep,
@@ -127,7 +127,7 @@ async function foldChangeSet(service_config, delta, config ){
   const tempInsertGraph = `http://mu.semte.ch/graphs/delta-producer-publication-maintainer/folding/inserts/${uuid()}`;
   try {
 
-    await batchedUpdate(service_config, deletes.map(t => serializeTriple(t)),
+    await batchedUpdate(deletes.map(t => serializeTriple(t)),
                         tempDeleteGraph,
                         'INSERT',
                         service_config.updatePublicationGraphSleep,
@@ -135,7 +135,7 @@ async function foldChangeSet(service_config, delta, config ){
                         { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
                         config.dbEndpoint
                        );
-    await batchedUpdate(service_config, inserts.map(t => serializeTriple(t)),
+    await batchedUpdate(inserts.map(t => serializeTriple(t)),
                         tempInsertGraph,
                         'INSERT',
                         service_config.updatePublicationGraphSleep,
@@ -159,8 +159,8 @@ async function foldChangeSet(service_config, delta, config ){
       `;
     };
 
-    const foldedDeletes = await batchedQuery(service_config, queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
-    const foldedInserts = await batchedQuery(service_config, queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
+    const foldedDeletes = await batchedQuery(queryForFolding(tempDeleteGraph, tempInsertGraph), 1000, config.dbEndpoint);
+    const foldedInserts = await batchedQuery(queryForFolding(tempInsertGraph, tempDeleteGraph), 1000, config.dbEndpoint);
     return [ { deletes: foldedDeletes, inserts: foldedInserts } ];
   }
   finally {

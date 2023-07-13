@@ -86,9 +86,9 @@ async function isNewTaskOfInterest(service_config, taskUri ){
   return result.results.bindings.length > 0;
 }
 
-export function appendPublicationGraph(service_config, tripleObject ){
+export function appendPublicationGraph(serviceConfig, tripleObject){
   tripleObject.graph = {
-    value: service_config.publicationGraph,
+    value: serviceConfig.publicationGraph,
     type: "uri"
   };
   return tripleObject;
