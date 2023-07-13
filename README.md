@@ -150,6 +150,13 @@ An export configuration entry in the `export` arrays contains the following keys
 * `graphsFilter`: optional list of graphs where the expected triples come from.
 * `additionalFilter`: (experimental) Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on. (For limitations, cf. infra.)
 * `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
+* `healingOptions: { }`: An extra config option to tweak healing related parameters. Currenty supported:
+  * ```
+    "http://predicate/of/the/type": {
+          "queryChunkSize": 100000
+        }
+    ```
+    Per type, it might be some queries are too heavy for a specific predicate. This allows you to configure the chunks to reduce load.
 
 The `export` array may contain multiple entries for an `rdf:type`.
 A resource may have multiple types and therefore map to multiple export configurations, but the `pathToConceptScheme` must be identical in that case. The service only works under the assumption that a resource has only 1 way to the export concept scheme (but there may be multiple instances of that way).
@@ -157,35 +164,51 @@ A resource may have multiple types and therefore map to multiple export configur
 #### Deltastream configuration
 The deltastream configuration allows for multiple deltastreams in one instance, it is specified by `CONFIG_SERVICES_JSON_PATH`.
 The json file represents a dictionary of service configurations with the key being the name of the service and the value the configuration.
-The proporties are:
-* `jobsGraph (default: "http://mu.semte.ch/graphs/system/jobs")`: URI where the jobs and jobs information are stored
-* `errorCreatorUri (default: "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer")`: URI of the creator of errors
-* `healingPatchGraphBatchSize (default: 100)`: Size of insert/delete batches.
-* `updatePublicationGraphSleep (default: 1000)`: Sleep between batch updates in the update of the publication graph
-* `muCallScopeIdPublicationGraphMaintenance (default: http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance)`: can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
-* `muCallScopeIdInitialSync (default: http://redpencil.data.gift/id/concept/muScope/deltas/initialSync)` : can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
-* `waitForInitialSync`: wait for initial sync. Defaults to 'true', mainly meant to disable for debugging purposes
-* `publicationGraph (required)`: URI of the publication graph to maintain
-* `initialPublicationGraphSyncJobOperation (required)`: URI of the job operation for intial syncing to listen to.
-* `healingJobOperation (required)`: URI of the job operation for healing operation to listen to.
-* `useVirtuosoForExpensiveSelects (default: false)`: Whether to use virtuoso for expensive selects.
-* `skipMuAuthInitialSync: Initial sync is expensive. Mu-auth can be skipped here. But be aware about what this implies!`
-* `serveDeltaFiles (default: false)`: Whether to serve delta files.
-* `logOutgoingDelta (default: false)`: Whether to log the delta messages as sent
-* `deltaInterval (default: 1000)`: Interval between outgoing delta messages
-* `errorGraph (default: http://mu.semte.ch/graphs/system/errors)`: The graph in which the errors should be stored.
-* `relativeFilePath (default: "deltas")`: relative path of the delta files compared to the root folder of the file service that will host the files.
-* `filesGraph (default: http://mu.semte.ch/graphs/public)`: The graph in which the files should be stored.
-* `queuePollInterval`: the queue is polled every minute by default.
-* `reportingFilesGraph`: If a specific graph is needed for the reports (e.g. healing) add URI here.
-* `publisherUri (default: "http://data.lblod.info/services/loket-producer")`: URI underneath which delta files will be saved.
-* `deltaPath`: The path where the delta messages arrive
-* `filesPath`: The path where the files are served
-* `loginPath`: The login path
-* `key (default: '')`: The login key
-* `account (default: 'http://services.lblod.info/diff-consumer/account')`: The login account
-* `account_graph (default: 'http://mu.semte.ch/graphs/diff-producer/login')`: The login account graph
-* E.g.:
+
+##### Properties
+
+- `exportConfigPath`: In container path to export the configuration. No default value.
+- `publisherUri`: The URI of the publisher; per delta-stream, another one should be configured. Must be provided.
+- `jobsGraph`: The URI of the graph for jobs. Defaults to `'http://mu.semte.ch/graphs/system/jobs'`.
+- `errorCreatorUri`: URI of error creator; ; per delta-stream, another one should be configured.
+   Defaults to `'http://lblod.data.gift/services/delta-producer-publication-graph-maintainer'`.
+- `reportingFilesGraph`: URI of the graph where files meta-data of the report should be stored. No default value.
+- `queuePollInterval`: Interval to poll the queue. Defaults to `60000`.
+- `healingMaxTriplesInMemory`: Maximum number of triples to hold in memory for healing process. Defaults to `100000`.
+- `healingInitialBatchSizeInsert`: Initial batch size for healing process. Defaults to `1000`.
+- `updatePublicationGraphSleep`: Sleep interval for updating publication graph. Defaults to `1000`.
+- `skipMuAuthDeltaFolding`: Boolean to decide to skip Mu-Auth delta folding. Defaults to `false`.
+- `muCallScopeIdPublicationGraphMaintenance`: ID of the call scope for publication graph maintenance.
+    Defaults to `'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance'`.
+    Can be configured to work with scopes in delta-notifier. This is fired when a updates are performed on the publication graph. Most of the services in your stack wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude. So we reduce load on the system, and potential confusion.
+- `muCallScopeIdInitialSync`: ID of the call scope for initial sync. `
+    Defaults to `'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync'`.
+    Can be configured to work with scopes in delta-notifier. This when the publication graph is initially synced. Most of the services in your stack (if not all) wouldn't be interested by this update, so best to add this in the deltanotifier configuration as scope to exclude.
+
+- `waitForInitialSync`: Boolean to decide to wait for initial sync. Mainly for debugging purposes. Defaults to `true`.
+- `publicationGraph`: URI of publication graph. Must be provided, no default value.
+- `initialPublicationGraphSyncJobOperation`: Job operation for initial publication graph sync. Must be provided, no default value.
+- `healingJobOperation`: Job operation for healing. Must be provided, no default value.
+- `useVirtuosoForExpensiveSelects`: Boolean to decide to use Virtuoso for expensive selects. Defaults to `false`.
+- `skipMuAuthInitialSync`: Boolean to decide to skip Mu-Auth initial sync. Defaults to `false`.
+    But be aware about what this implies!
+- `skipMuAuthHealing`: Boolean to decide to skip Mu-Auth healing. Defaults to `false`.
+    But be aware about what this implies!
+- `serveDeltaFiles`: Boolean to decide to serve delta files. Defaults to `false`, but recommended to set to 'true'.
+- `logOutgoingDelta`: Boolean to decide to log outgoing delta. Defaults to `false`.
+- `deltaInterval`: Interval specifying how long the service should wait before publishing delta-files. Defaults to `1000`.
+- `errorGraph`: URI of error graph. Defaults to `'http://mu.semte.ch/graphs/system/errors'`.
+- `relativeFilePath`: In container file path for writing the delta-files. Defaults to `'deltas'`.
+- `filesGraph`: URI of the graph where delta-files meta-data should be written to. Defaults to `'http://mu.semte.ch/graphs/public'`.
+- `useFileDiff`: Boolean to decide to use file diff based healing. Defaults to `false`. Recommended when dealing with significant data sets.
+- `deltaPath`: Api path for incoming delta notifications from (internal) delta-notifier. Must be provided, no default value. WILL CHANGE SOON.
+- `filesPath`: Api path for retreiving delta-files meta data. Must be provided, no default value.
+- `loginPath`: Api path for login. Must be provided, no default value.
+- `key`: Key for login. Defaults to `''`.
+- `account`: Account for login. Defaults to `'http://services.lblod.info/diff-consumer/account'`.
+- `account_graph`: Graph for account login. Defaults to `'http://mu.semte.ch/graphs/diff-producer/login'`.
+
+###### Example
 
 ```json
     "besluiten": {
@@ -204,9 +227,9 @@ The proporties are:
         "publisherUri": "http://data.lblod.info/services/delta-production-json-diff-file-manager-besluiten",
         "queuePollInterval": 3000,
         "relativeFilePath": "deltas/besluiten",
-        "serveDeltaFiles": "true",
-        "skipMuAuthInitialSync": "false",
-        "useVirtuosoForExpensiveSelects": "true"
+        "serveDeltaFiles": true,
+        "skipMuAuthInitialSync": false,
+        "useVirtuosoForExpensiveSelects": true
     },
 ```
 
@@ -216,10 +239,13 @@ The following enviroment variables can be optionally configured:
 * `LOG_DELTA_REWRITE (default: "false")`: verbose log output during the rewrite of the incoming delta to the resulting delta. Only useful for debugging purposes.
 * `VIRTUOSO_ENDPOINT (default: http://virtuoso:8890/sparql)`: Location of the virtuoso endpoint.
 * `MU_AUTH_ENDPOINT (default: http://database:8890/sparql)`: Location of the mu-auth endpoint
-* `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Location of the virtuoso endpoint.
+* `PUBLICATION_VIRTUOSO_ENDPOINT (default: VIRTUOSO_ENDPOINT)`: Specifies the location of the Virtuoso endpoint. Experience has shown that having a separate triplestore for published data is beneficial for multiple reasons. This separation aids in writing code (e.g., no need to account for published data when writing migrations), ensures that the source data remains uncluttered and has performance benefits.
 * `PUBLICATION_MU_AUTH_ENDPOINT (default: MU_AUTH_ENDPOINT)`: Location of the mu-auth endpoint
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
+* `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE (defaut: 100)`: A delta is an object containing `inserts` and `deletes` properties. This variables specs the max. number of elements in these properties. This is mainly to tweak the size of the published delta files; where in some cases we need to tweak this number to reduce load on the consumers.
+* `MAX_DELTAS_PER_FILE: (default 10)`: Related to `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE`, a delta-file bundles an array of delta-objects, here you configure the number of these delta-object per delta file. Again something to tweak only if you need to take care of the (potential) load on consumers.
+
 
 ### API
 #### POST /delta

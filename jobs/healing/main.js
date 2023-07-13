@@ -1,9 +1,9 @@
 import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { sparqlEscapeUri } from 'mu';
-import { publishDeltaFiles } from '../../files-publisher/main';
 import { appendTaskError, loadTask, updateTaskStatus } from '../../lib/task';
 import { parseResult, storeError } from '../../lib/utils';
-import { runHealingTask } from './pipeline-healing';
+import { runHealingTask as runHealingTaskOnFile } from './file-based-healing';
+import { runHealingTask } from './standard-healing';
 
 export async function executeHealingTask(service_config, service_export_config) {
 
@@ -20,10 +20,14 @@ export async function executeHealingTask(service_config, service_export_config) 
       const task = await loadTask(service_config, syncTaskUri || healingTaskUri);
       try {
         await updateTaskStatus(task, service_config.statusBusy);
-        delta = await runHealingTask(service_config, service_export_config, task, syncTaskUri ? true : false);
-        if(service_config.serveDeltaFiles && healingTaskUri){
-          await publishDeltaFiles(service_config, delta);
+
+        if(service_config.useFileDiff) {
+          await runHealingTaskOnFile(service_config, service_export_config, task, syncTaskUri ? true : false, service_config.serveDeltaFiles && healingTaskUri);
         }
+        else {
+          await runHealingTask(service_config, service_export_config, task, syncTaskUri ? true : false, service_config.serveDeltaFiles && healingTaskUri);
+        }
+
         await updateTaskStatus(task, service_config.statusSuccess);
       }
       catch(e) {
