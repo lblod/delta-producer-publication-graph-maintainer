@@ -89,7 +89,7 @@ export class Config {
     this.skipMuAuthHealing = configData.skipMuAuthHealing || false;
 
     //FILES PUBLISHER
-    this.serveDeltaFiles = configData.serveDeltaFiles || true;
+    this.serveDeltaFiles = configData.serveDeltaFiles || false;
     this.logOutgoingDelta = configData.logOutgoingDelta || false;
     this.deltaInterval = configData.deltaInterval || 1000;
     this.errorGraph = configData.errorGraph || 'http://mu.semte.ch/graphs/system/errors';

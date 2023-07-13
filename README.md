@@ -194,7 +194,7 @@ The json file represents a dictionary of service configurations with the key bei
     But be aware about what this implies!
 - `skipMuAuthHealing`: Boolean to decide to skip Mu-Auth healing. Defaults to `false`.
     But be aware about what this implies!
-- `serveDeltaFiles`: Boolean to decide to serve delta files. Defaults to `true`.
+- `serveDeltaFiles`: Boolean to decide to serve delta files. Defaults to `false`, but recommended to set to 'true'.
 - `logOutgoingDelta`: Boolean to decide to log outgoing delta. Defaults to `false`.
 - `deltaInterval`: Interval specifying how long the service should wait before publishing delta-files. Defaults to `1000`.
 - `errorGraph`: URI of error graph. Defaults to `'http://mu.semte.ch/graphs/system/errors'`.
