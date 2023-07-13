@@ -15,7 +15,7 @@ export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH |
 export class Config {
   constructor(configData) {
     this.exportConfigPath = configData.exportConfigPath;
-    this.publisherUri = configData.publisherUri || 'http://data.lblod.info/services/loket-producer';
+    this.publisherUri = configData.publisherUri;
     //TODO: why here?
     this.prefixes = `
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -66,7 +66,7 @@ export class Config {
         || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
     //mainly for debugging purposes
-    this.waitForInitialSync = configData.waitForInitialSync || false;
+    this.waitForInitialSync = configData.waitForInitialSync || true;
 
     if (!configData.publicationGraph)
         throw `Expected 'publicationGraph' should be provided.`;
@@ -89,7 +89,7 @@ export class Config {
     this.skipMuAuthHealing = configData.skipMuAuthHealing || false;
 
     //FILES PUBLISHER
-    this.serveDeltaFiles = configData.serveDeltaFiles || false;
+    this.serveDeltaFiles = configData.serveDeltaFiles || true;
     this.logOutgoingDelta = configData.logOutgoingDelta || false;
     this.deltaInterval = configData.deltaInterval || 1000;
     this.errorGraph = configData.errorGraph || 'http://mu.semte.ch/graphs/system/errors';
