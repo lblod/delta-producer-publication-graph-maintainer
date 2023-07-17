@@ -11,7 +11,10 @@ export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'tr
 export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE || 100);
 export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE || 10);
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
-
+export const DELTA_PATH = process.env.DELTA_PATH
+if (DELTA_PATH === undefined) {
+  throw `Expected 'DELTA_PATH' environment variable should be provided.`;
+}
 export class Config {
   constructor(configData) {
     this.exportConfigPath = configData.exportConfigPath;
@@ -105,9 +108,6 @@ export class Config {
     /*
      * PATHS
      */
-    if (!configData.deltaPath)
-        throw `Expected 'deltaPath' should be provided.`;
-    this.deltaPath = configData.deltaPath;
     if (!configData.filesPath)
         throw `Expected 'filesPath' should be provided.`;
     this.filesPath = configData.filesPath;

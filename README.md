@@ -213,7 +213,6 @@ The json file represents a dictionary of service configurations with the key bei
 ```json
     "besluiten": {
         "deltaInterval": 10000,
-        "deltaPath": "/besluiten/delta",
         "errorCreatorUri": "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer-besluiten",
         "errorGraph": "http://mu.semte.ch/graphs/harvesting",
         "exportConfigPath": "/config/besluiten/export.json",
@@ -245,7 +244,7 @@ The following enviroment variables can be optionally configured:
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
 * `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE (defaut: 100)`: A delta is an object containing `inserts` and `deletes` properties. This variables specs the max. number of elements in these properties. This is mainly to tweak the size of the published delta files; where in some cases we need to tweak this number to reduce load on the consumers.
 * `MAX_DELTAS_PER_FILE: (default 10)`: Related to `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE`, a delta-file bundles an array of delta-objects, here you configure the number of these delta-object per delta file. Again something to tweak only if you need to take care of the (potential) load on consumers.
-
+* `DELTA_PATH`: The path where the delta messages get delivered
 
 ### API
 #### POST /delta
