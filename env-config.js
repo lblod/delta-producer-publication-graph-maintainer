@@ -98,6 +98,8 @@ export class Config {
 
     this.useFileDiff = configData.useFileDiff || false;
 
+    this.healingJobsRetentionCount = configData.healingJobsRetentionCount || -1
+
     /*
      * END EXPERIMENTAL FEATURES
      */

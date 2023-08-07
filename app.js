@@ -10,6 +10,7 @@ import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
 import {loadConfiguration, storeError} from './lib/utils';
+import {cleanupHealingJobs} from "./jobs/healing/utils";
 
 app.use( bodyParser.json({
   type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
@@ -42,6 +43,10 @@ for (const name in services){
         producerQueue.addJob(async () => {
           return await executeHealingTask(service_config, service_export_config);
         });
+        // When the healing task has been executed, clean up the old healing jobs
+        producerQueue.addJob(async () => {
+          return await cleanupHealingJobs(service_config)
+        })
       } else if (await isBlockingJobActive(service_config)) {
         // During the healing (and probably initial sync too) we want as few as much moving parts,
         // If a delta comes in while the healing process is busy, this might yield inconsistent/difficult to troubleshoot results.

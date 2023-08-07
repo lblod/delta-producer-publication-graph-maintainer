@@ -207,6 +207,7 @@ The json file represents a dictionary of service configurations with the key bei
 - `key`: Key for login. Defaults to `''`.
 - `account`: Account for login. Defaults to `'http://services.lblod.info/diff-consumer/account'`.
 - `account_graph`: Graph for account login. Defaults to `'http://mu.semte.ch/graphs/diff-producer/login'`.
+- `healingJobsRetentionCount`: Number of jobs to retain in the cleanup step, when this is set to 0 or a negative value, all jobs are retained. Defaults to `-1`
 
 ###### Example
 
