@@ -77,6 +77,7 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
   const { additionalFilter,
           pathToConceptScheme,
           graphsFilter,
+          hasRegexGraphsFilter,
           type,
           strictTypeExport,
           healingOptions
@@ -102,7 +103,7 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
   // What we certainly don't want, are triples only living in the publication-graph
   let bindGraphStatement = ''; // if only one graph needs to be filtered, we bind it for performance
   let graphsFilterStr = `FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))`;
-  if(graphsFilter.length == 1) {
+  if(graphsFilter.length == 1 && !hasRegexGraphsFilter) {
     bindGraphStatement = `BIND(${sparqlEscapeUri(graphsFilter[0])} as ?graph)`;
   }
   else if(graphsFilter.length > 1){
