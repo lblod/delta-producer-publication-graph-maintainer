@@ -103,11 +103,16 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
   // What we certainly don't want, are triples only living in the publication-graph
   let bindGraphStatement = ''; // if only one graph needs to be filtered, we bind it for performance
   let graphsFilterStr = `FILTER(?graph NOT IN (${sparqlEscapeUri(publicationGraph)}))`;
-  if(graphsFilter.length == 1 && !hasRegexGraphsFilter) {
-    bindGraphStatement = `BIND(${sparqlEscapeUri(graphsFilter[0])} as ?graph)`;
+  if(!hasRegexGraphsFilter) {
+    if(graphsFilter.length == 1) {
+      bindGraphStatement = `BIND(${sparqlEscapeUri(graphsFilter[0])} as ?graph)`;
+    }
+    else if(graphsFilter.length > 1) {
+      const graphsSetString = graphsFilter.map(g => sparqlEscapeUri(g)).join(',\n');
+      graphsFilterStr = `FILTER(?graph IN (${graphsSetString}))`;
+    }
   }
-  else if(graphsFilter.length > 1){
-    //Else use the provided graphs filter
+  else if(hasRegexGraphsFilter && graphsFilter.length > 0) {
     graphsFilterStr = graphsFilter
       .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
       .join(' || ');
