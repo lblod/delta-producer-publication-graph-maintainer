@@ -148,6 +148,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `pathToConceptScheme`: list of path segments (URIs) from the resource to the export concept scheme. If the path exists, the resource is in scope of the export. Otherwise the resource is out of scope.
 * `properties`: list of predicates (URIs) to export for the resource type
 * `graphsFilter`: optional list of graphs where the expected triples come from.
+* `hasRegexGraphsFilter`: if the graphsfilter is meant to be used as regex.
 * `additionalFilter`: (experimental) Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on. (For limitations, cf. infra.)
 * `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
 * `healingOptions: { }`: An extra config option to tweak healing related parameters. Currenty supported:
