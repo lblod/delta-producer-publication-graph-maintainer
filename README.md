@@ -5,6 +5,7 @@ Producer service responsible for:
   - executing the periodic healing of the publication graph
   - executing the initial sync of the publication graph
 
+:warning: Upgrading from v0.x.y to v1.a.b includes breaking changes and fixes. Please review the documentation thoroughly.
 ## Tutorials
 
 The production of what is considered an interesting delta has two modes. A 'simple mode' and concept-base filtering.
@@ -148,7 +149,7 @@ An export configuration entry in the `export` arrays contains the following keys
 * `pathToConceptScheme`: list of path segments (URIs) from the resource to the export concept scheme. If the path exists, the resource is in scope of the export. Otherwise the resource is out of scope.
 * `properties`: list of predicates (URIs) to export for the resource type
 * `graphsFilter`: optional list of graphs where the expected triples come from.
-* `hasRegexGraphsFilter`: if the graphsfilter is meant to be used as regex.
+* `hasRegexGraphsFilter`: if the graphsfilter is meant to be used as regex. Defaults to `false`.
 * `additionalFilter`: (experimental) Optional custom filter tied to the resource you want to export. Assumes `?subject` as starting point to filter on. (For limitations, cf. infra.)
 * `strictTypeExport`: If a resource has multiple types and these extras should not be exported, set this to `true`
 * `healingOptions: { }`: An extra config option to tweak healing related parameters. Currenty supported:
