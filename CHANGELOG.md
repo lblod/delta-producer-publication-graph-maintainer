@@ -1,5 +1,6 @@
 # Changelog
-
+## 1.0.1 (2023-09-21)
+- Fixes with graphsfilter
 ## 1.0.0 (2023-07-13)
 
 - This version introduces a new feature: file-based healing. This is primarily aimed at improving performance when dealing with large datasets.
