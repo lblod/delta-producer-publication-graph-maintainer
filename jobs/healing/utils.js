@@ -37,10 +37,15 @@ export async function createResultsContainer(serviceConfig, task, nTriples, subj
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
-export function generateGetPublicationTriplesQuery(config, property, publicationGraph) {
+export function generateGetPublicationTriplesQuery(config, property, publicationGraph, asConstructQuery = false) {
+
+  const resultsExpression = asConstructQuery ?
+        `CONSTRUCT { ?subject ?predicate ?object }` :
+        'SELECT DISTINCT ?subject ?predicate ?object';
+
   const { type } = config;
   return `
-   SELECT DISTINCT ?subject ?predicate ?object WHERE {
+   ${resultsExpression} WHERE {
     GRAPH ${sparqlEscapeUri(publicationGraph)}{
       BIND(${sparqlEscapeUri(property)} as ?predicate)
       ?subject a ${sparqlEscapeUri(type)}.
@@ -72,7 +77,7 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   return reformatQueryResult(result, property);
 }
 
-export function generateGetSourceTriplesQuery(config, property, publicationGraph, conceptSchemeUri) {
+export function generateGetSourceTriplesQuery(config, property, publicationGraph, conceptSchemeUri, asConstructQuery = false) {
   const { additionalFilter,
           pathToConceptScheme,
           graphsFilter,
@@ -115,12 +120,16 @@ export function generateGetSourceTriplesQuery(config, property, publicationGraph
     graphsFilterStr = `FILTER ( ${graphsFilterStr} )`;
   }
 
+  const resultsExpression = asConstructQuery ?
+        `CONSTRUCT { ?subject ?predicate ?object }` :
+        'SELECT DISTINCT ?subject ?predicate ?object';
+
   // IMPORTANT NOTE: don't rename "?variables" in this query, as it risks
   // breaking additionalFilter functionality coming from the config file.
   // Yes, this is abstraction leakage. It might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
   const queryForSourceData = `
-    SELECT DISTINCT ?subject ?predicate ?object WHERE {
+    ${resultsExpression} WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
       ${bindGraphStatement}
       ${strictTypeFilter}
