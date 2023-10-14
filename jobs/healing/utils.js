@@ -37,6 +37,18 @@ export async function createResultsContainer(serviceConfig, task, nTriples, subj
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
+export function generateGetPublicationTriplesQuery(config, property, publicationGraph) {
+  const { type } = config;
+  return `
+   SELECT DISTINCT ?subject ?predicate ?object WHERE {
+    GRAPH ${sparqlEscapeUri(publicationGraph)}{
+      BIND(${sparqlEscapeUri(property)} as ?predicate)
+      ?subject a ${sparqlEscapeUri(type)}.
+      ?subject ?predicate ?object.
+    }
+   }`;
+}
+
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
@@ -49,15 +61,7 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   console.log(`Publication triples using file? ${serviceConfig.useFileDiff}`);
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
 
-  const selectFromPublicationGraph = `
-   SELECT DISTINCT ?subject ?predicate ?object WHERE {
-    GRAPH ${sparqlEscapeUri(publicationGraph)}{
-      BIND(${sparqlEscapeUri(property)} as ?predicate)
-      ?subject a ${sparqlEscapeUri(type)}.
-      ?subject ?predicate ?object.
-    }
-   }
-  `;
+  const selectFromPublicationGraph = generateGetPublicationTriplesQuery(config, property, publicationGraph);
 
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await batchedQuery(selectFromPublicationGraph,
