@@ -37,7 +37,7 @@ export async function createResultsContainer(serviceConfig, task, nTriples, subj
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
-export function generateGetPublicationTriplesQuery(config, property, publicationGraph, asConstructQuery = false) {
+export function generateGetPublicationTriplesQuery({ config, property, publicationGraph, asConstructQuery = false }) {
 
   const resultsExpression = asConstructQuery ?
         `CONSTRUCT { ?subject ?predicate ?object }` :
@@ -66,7 +66,7 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   console.log(`Publication triples using file? ${serviceConfig.useFileDiff}`);
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
 
-  const selectFromPublicationGraph = generateGetPublicationTriplesQuery(config, property, publicationGraph);
+  const selectFromPublicationGraph = generateGetPublicationTriplesQuery({ config, property, publicationGraph });
 
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await batchedQuery(selectFromPublicationGraph,
@@ -77,7 +77,13 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   return reformatQueryResult(result, property);
 }
 
-export function generateGetSourceTriplesQuery(config, property, publicationGraph, conceptSchemeUri, asConstructQuery = false) {
+export function generateGetSourceTriplesQuery({
+  config,
+  property,
+  publicationGraph,
+  conceptSchemeUri,
+  asConstructQuery = false
+}) {
   const { additionalFilter,
           pathToConceptScheme,
           graphsFilter,
@@ -161,7 +167,7 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive queries`);
 
-  const selectFromDatabase = generateGetSourceTriplesQuery(config, property, publicationGraph, conceptSchemeUri);
+  const selectFromDatabase = generateGetSourceTriplesQuery({config, property, publicationGraph, conceptSchemeUri});
 
   const result = await batchedQuery(selectFromDatabase,
                                     healingOptionsForProperty.queryChunkSize,
