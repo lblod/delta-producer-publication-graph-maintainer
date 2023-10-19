@@ -37,6 +37,23 @@ export async function createResultsContainer(serviceConfig, task, nTriples, subj
   await appendTaskResultFile(task, fileContainer, turtleFile);
 }
 
+export function generateGetPublicationTriplesQuery({ config, property, publicationGraph, asConstructQuery = false }) {
+
+  const resultsExpression = asConstructQuery ?
+        `CONSTRUCT { ?subject ?predicate ?object }` :
+        'SELECT DISTINCT ?subject ?predicate ?object';
+
+  const { type } = config;
+  return `
+   ${resultsExpression} WHERE {
+    GRAPH ${sparqlEscapeUri(publicationGraph)}{
+      BIND(${sparqlEscapeUri(property)} as ?predicate)
+      ?subject a ${sparqlEscapeUri(type)}.
+      ?subject ?predicate ?object.
+    }
+   }`;
+}
+
 /*
  * Gets the triples residing in the publication graph, for a specific property
  */
@@ -49,15 +66,7 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   console.log(`Publication triples using file? ${serviceConfig.useFileDiff}`);
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
 
-  const selectFromPublicationGraph = `
-   SELECT DISTINCT ?subject ?predicate ?object WHERE {
-    GRAPH ${sparqlEscapeUri(publicationGraph)}{
-      BIND(${sparqlEscapeUri(property)} as ?predicate)
-      ?subject a ${sparqlEscapeUri(type)}.
-      ?subject ?predicate ?object.
-    }
-   }
-  `;
+  const selectFromPublicationGraph = generateGetPublicationTriplesQuery({ config, property, publicationGraph });
 
   console.log(`Hitting database ${endpoint} with expensive query`);
   const result = await batchedQuery(selectFromPublicationGraph,
@@ -68,12 +77,13 @@ export async function getScopedPublicationTriples(serviceConfig, config, propert
   return reformatQueryResult(result, property);
 }
 
-/*
- * Gets the source triples for a property and a pathToConceptScheme from the database,
- * for all graphs except the ones exclusively residing in the publication graph
- */
-export async function getScopedSourceTriples(serviceConfig, config, property, publicationGraph, conceptSchemeUri){
-
+export function generateGetSourceTriplesQuery({
+  config,
+  property,
+  publicationGraph,
+  conceptSchemeUri,
+  asConstructQuery = false
+}) {
   const { additionalFilter,
           pathToConceptScheme,
           graphsFilter,
@@ -82,9 +92,6 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
           strictTypeExport,
           healingOptions
         } = config;
-
-  const healingOptionsForProperty = healingOptions && healingOptions[property] ?
-      healingOptions[property] : { 'queryChunkSize': 0 };
 
   let pathToConceptSchemeString = '';
 
@@ -119,12 +126,16 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
     graphsFilterStr = `FILTER ( ${graphsFilterStr} )`;
   }
 
+  const resultsExpression = asConstructQuery ?
+        `CONSTRUCT { ?subject ?predicate ?object }` :
+        'SELECT DISTINCT ?subject ?predicate ?object';
+
   // IMPORTANT NOTE: don't rename "?variables" in this query, as it risks
   // breaking additionalFilter functionality coming from the config file.
   // Yes, this is abstraction leakage. It might be in need in further thinking, but
   // it avoids for now the need for a complicated intermediate abstraction.
-  const selectFromDatabase = `
-    SELECT DISTINCT ?subject ?predicate ?object WHERE {
+  const queryForSourceData = `
+    ${resultsExpression} WHERE {
       BIND(${sparqlEscapeUri(property)} as ?predicate)
       ${bindGraphStatement}
       ${strictTypeFilter}
@@ -140,8 +151,23 @@ export async function getScopedSourceTriples(serviceConfig, config, property, pu
      }
   `;
 
+  return queryForSourceData;
+}
+
+/*
+ * Gets the source triples for a property and a pathToConceptScheme from the database,
+ * for all graphs except the ones exclusively residing in the publication graph
+ */
+export async function getScopedSourceTriples(serviceConfig, config, property, publicationGraph, conceptSchemeUri){
+  const {  healingOptions } = config;
+
+  const healingOptionsForProperty = healingOptions && healingOptions[property] ?
+        healingOptions[property] : { 'queryChunkSize': 0 };
+
   const endpoint = serviceConfig.useVirtuosoForExpensiveSelects ? VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
   console.log(`Hitting database ${endpoint} with expensive queries`);
+
+  const selectFromDatabase = generateGetSourceTriplesQuery({config, property, publicationGraph, conceptSchemeUri});
 
   const result = await batchedQuery(selectFromDatabase,
                                     healingOptionsForProperty.queryChunkSize,

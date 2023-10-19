@@ -2,12 +2,16 @@ import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
 import { publishDeltaFiles } from "../../files-publisher/main";
 import { appendPublicationGraph } from '../utils';
+import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 
 import {
   groupPathToConceptSchemePerProperty,
   getScopedSourceTriples,
   getScopedPublicationTriples,
-  updateDatabase
+  updateDatabase,
+  generateGetPublicationTriplesQuery,
+  generateGetSourceTriplesQuery,
+  reformatQueryResult
 }  from './utils';
 
 import {
@@ -18,8 +22,10 @@ import {
 } from './file-utils';
 
 import {
+  MU_AUTH_ENDPOINT,
   PUBLICATION_MU_AUTH_ENDPOINT,
   PUBLICATION_VIRTUOSO_ENDPOINT,
+  VIRTUOSO_ENDPOINT
 } from "../../env-config";
 
 /*
@@ -40,15 +46,21 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
     // See standard-healing.js for more explanation
     for(const property of Object.keys(propertyMap)){
 
+      let endpoint = serviceConfig.useVirtuosoForExpensiveSelects ?
+          VIRTUOSO_ENDPOINT : MU_AUTH_ENDPOINT;
       const sourceTriples = await getTriples(serviceConfig,
                                              property, propertyMap,
                                              conceptSchemeUri,
-                                             getScopedSourceTriples);
+                                             endpoint,
+                                             generateGetSourceTriplesQuery);
 
+      endpoint = serviceConfig.useVirtuosoForExpensiveSelects ?
+        PUBLICATION_VIRTUOSO_ENDPOINT : PUBLICATION_MU_AUTH_ENDPOINT;
       const publicationGraphTriples = await getTriples(serviceConfig,
                                                        property, propertyMap,
                                                        conceptSchemeUri,
-                                                       getScopedPublicationTriples);
+                                                       endpoint,
+                                                       generateGetPublicationTriplesQuery);
 
       console.log(`Calculating diffs for property ${property}, this may take a while`);
       let fileDiff = diffFiles(sourceTriples, publicationGraphTriples);
@@ -119,18 +131,32 @@ export async function runHealingTask(serviceConfig, serviceExportConfig, task, i
 /*
  * Gets the triples for a property
  */
-async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri, getTriplesCall ){
+async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri, endpoint, generateQuery ){
   let sourceTriples = tmp.fileSync();
+  console.log(`Hitting database ${endpoint} with expensive queries`);
 
   for(const config of propertyMap[property]){
-    let scopedSourceTriples = await getTriplesCall(serviceConfig,
-                                                           config,
-                                                           property,
-                                                           serviceConfig.publicationGraph,
-                                                           conceptSchemeUri);
-    console.log(`Number of source triples: ${scopedSourceTriples.length}`);
+    let queryStr = generateQuery(
+      { config,
+        property,
+        publicationGraph: serviceConfig.publicationGraph,
+        conceptSchemeUri,
+        asConstructQuery: true
+      });
 
-    let scopedSourceTriplesFile = arrayToFile(scopedSourceTriples, tmp.fileSync());
+    const results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+
+    let triples = results?.results?.bindings.map(b => {
+      return  {
+        graph: { type: 'uri', value: 'http://mu.semte.ch/graphs/stub' }, // Since construct query, we don't have this info
+        subject: b.s,
+        predicate: b.p,
+        object: b.o
+      };
+    }) || [];
+    triples = reformatQueryResult(triples);
+
+    let scopedSourceTriplesFile = arrayToFile(triples, tmp.fileSync());
     const diffs = diffFiles(scopedSourceTriplesFile, sourceTriples);
 
     sourceTriples = mergeFiles(sourceTriples, diffs.inserts, true);
