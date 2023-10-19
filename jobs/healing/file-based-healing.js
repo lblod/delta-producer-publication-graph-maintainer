@@ -148,7 +148,10 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
 
     let triples = results?.results?.bindings.map(b => {
       return  {
-        graph: { type: 'uri', value: 'http://mu.semte.ch/graphs/stub' }, // Since construct query, we don't have this info
+        graph: {
+          type: 'uri',
+          value: 'http://mu.semte.ch/graphs/dummy/7c39b344-c5eb-4e20-a726-78cd0391a425'
+        }, // To not break the interfaces, and because we lack this info in CONSTRUCT queries, we add a stub graph
         subject: b.s,
         predicate: b.p,
         object: b.o
