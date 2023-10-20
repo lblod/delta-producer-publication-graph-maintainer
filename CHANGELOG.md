@@ -1,5 +1,7 @@
 # Changelog
-## 1.0.2 (2023-10-20)
+## 1.0.3 (2023-10-20)
+- Bugfix on delete maintenance of triples
+## 1.0.2 (2023-10-19)
 - File based healing uses construct queries for better performance
 ## 1.0.1 (2023-09-21)
 - Fixes with graphsfilter
