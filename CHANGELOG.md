@@ -1,4 +1,6 @@
 # Changelog
+## 1.0.2 (2023-10-20)
+- File based healing uses construct queries for better performance
 ## 1.0.1 (2023-09-21)
 - Fixes with graphsfilter
 ## 1.0.0 (2023-07-13)
