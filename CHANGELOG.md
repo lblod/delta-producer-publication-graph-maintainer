@@ -1,4 +1,6 @@
 # Changelog
+## 1.0.4 (2024-01-09)
+- Fix parsing of config data and its default settings. The boolean logic was incorrect, but this is hopefully(!) corrected now.
 ## 1.0.3 (2023-10-20)
 - Bugfix on delete maintenance of triples
 ## 1.0.2 (2023-10-19)
