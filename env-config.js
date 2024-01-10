@@ -11,9 +11,10 @@ export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'tr
 export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE) || 100;
 export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE) || 10;
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
+export const CONFIG_SERVICES_OVERRIDE_JSON_PATH = process.env.CONFIG_SERVICES_OVERRIDE_JSON_PATH || '/config/services.override.json';
 
 export class Config {
-  constructor(configData) {
+  constructor(configData, configOverrideData) {
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri;
     //TODO: why here?
@@ -118,5 +119,12 @@ export class Config {
     this.key = configData.key || '';
     this.account = configData.account || 'http://services.lblod.info/diff-consumer/account';
     this.account_graph = configData.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
+
+    // Apply configuration overrides, if any exist
+    if (configOverrideData != undefined) {
+      for (let key in configOverrideData) {
+        this[key] = configOverrideData[key];
+      }
     }
+  }
 }

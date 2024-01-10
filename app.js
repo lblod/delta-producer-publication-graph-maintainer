@@ -2,7 +2,7 @@ import { updateSudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import {
-  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
+  Config, CONFIG_SERVICES_JSON_PATH, CONFIG_SERVICES_OVERRIDE_JSON_PATH, LOG_INCOMING_DELTA
 } from './env-config';
 import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
 import { executeHealingTask } from './jobs/healing/main';
@@ -17,14 +17,17 @@ app.use( bodyParser.json({
 }));
 
 let services = require(CONFIG_SERVICES_JSON_PATH);
+let services_override = require(CONFIG_SERVICES_OVERRIDE_JSON_PATH);
 
-console.log("Services config is: ", services);
 for (const name in services){
   let service = services[name];
-  const service_config = new Config(service);
+  let service_override = services_override[name];
+  const service_config = new Config(service, service_override);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
   const producerQueue = new ProcessingQueue(service_config);
+
+  console.log(name, "config is:", service_config);
 
   app.post(service_config.deltaPath, async function (req, res) {
     try {
