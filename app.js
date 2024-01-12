@@ -28,12 +28,10 @@ if (fs.existsSync(CONFIG_SERVICES_OVERRIDE_JSON_PATH)) {
 for (const name in services){
   let service = services[name];
   let service_override = services_override[name] || {};
-  const service_config = new Config(service, service_override);
+  const service_config = new Config(name, service, service_override);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
   const producerQueue = new ProcessingQueue(service_config);
-
-  console.log(name, "config is:", service_config);
 
   app.post(service_config.deltaPath, async function (req, res) {
     try {

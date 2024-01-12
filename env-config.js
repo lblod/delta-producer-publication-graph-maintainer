@@ -14,7 +14,8 @@ export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH |
 export const CONFIG_SERVICES_OVERRIDE_JSON_PATH = process.env.CONFIG_SERVICES_OVERRIDE_JSON_PATH || '/config/services.override.json';
 
 export class Config {
-  constructor(configData, configOverrideData) {
+  constructor(name, configData, configOverrideData) {
+    this.name = name;
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri;
     //TODO: why here?
@@ -122,7 +123,20 @@ export class Config {
 
     // Apply configuration overrides, if any exist
     for (let key in configOverrideData) {
+      if(typeof(configOverrideData[key]) == "object") {
+        console.log(`WARNING: The "${key}" key has an object as a value, which will completely overwrite the original one.`)
+        console.log(`WARNING:
+        {
+          "${key}": ${this[key]}
+        }
+        will become
+        {
+          "${key}": ${JSON.stringify(configOverrideData[key])}
+        }`)
+      }
       this[key] = configOverrideData[key];
     }
+
+    console.log(name, "config is:", this);
   }
 }
