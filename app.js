@@ -11,17 +11,23 @@ import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActiv
 import { ProcessingQueue } from './lib/processing-queue';
 import {loadConfiguration, storeError} from './lib/utils';
 
+import fs from 'fs';
+
 app.use( bodyParser.json({
   type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
   limit: '500mb'
 }));
 
 let services = require(CONFIG_SERVICES_JSON_PATH);
-let services_override = require(CONFIG_SERVICES_OVERRIDE_JSON_PATH);
+
+let services_override = {};
+if (fs.existsSync(CONFIG_SERVICES_OVERRIDE_JSON_PATH)) {
+  services_override = require(CONFIG_SERVICES_OVERRIDE_JSON_PATH);
+}
 
 for (const name in services){
   let service = services[name];
-  let service_override = services_override[name];
+  let service_override = services_override[name] || {};
   const service_config = new Config(service, service_override);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 

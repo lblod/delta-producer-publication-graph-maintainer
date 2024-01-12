@@ -121,10 +121,8 @@ export class Config {
     this.account_graph = configData.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
 
     // Apply configuration overrides, if any exist
-    if (configOverrideData != undefined) {
-      for (let key in configOverrideData) {
-        this[key] = configOverrideData[key];
-      }
+    for (let key in configOverrideData) {
+      this[key] = configOverrideData[key];
     }
   }
 }
