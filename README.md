@@ -43,7 +43,131 @@ export default [
   // Other delta listeners
 ]
 ```
-### configuration file
+### Configuration File
+
+#### config.json
+
+The service's configuration file has the following format:
+```json
+{
+  "NAME-OF-STREAM-1": {
+    "key-A": "value-A",
+    "key-B": "value-B",
+    "key-C": "value-C"
+  },
+  "NAME-OF-STREAM-2": {
+    "key-X": "value-X",
+    "key-Y": "value-Y",
+    "key-Z": "value-Z"
+  }
+}
+```
+
+Check [the example](#Example) section below for an example config snippet with configured parameters.
+
+#### config.override.json
+
+This config file is optional and allows to override specific configuration keys for local development purposes or server deploys. The override behavior is "total" and only one level deep (i.e., values are completely overriden at their root-level without any exception:
+```python
+final["delta-stream"]["key"] = override["delta-stream"]["key"] if override["delta-stream"]["key"] exists else original["delta-stream"]["key"])
+```
+
+There are three situations to consider:
+
+##### Regular Config + No Override
+
+Original config:
+```
+{
+  "submissions": {
+    "key": "B"
+  },
+  "worship-submissions": {
+    "useFileDiff": true,
+  }
+}
+```
+with no overrides => **Final config = Original config**.
+
+##### Regular Config + Override
+
+Original config:
+```
+{
+  "submissions": {
+    "key": "B",
+    "useFileDiff": true,
+    "queuePollInterval": 3000
+  },
+  "worship-submissions": {
+    "useFileDiff": true,
+    "queuePollInterval": 3000
+  }
+}
+```
+with the following override config:
+```
+{
+  "submissions": {
+    "key": "NEW_B",
+    "queuePollInterval": 5000
+  },
+  "worship-submissions": {
+    "useFileDiff": false,
+  }
+}
+```
+leads to the following **final config**:
+```
+{
+  "submissions": {
+    "key": "NEW_B",
+    "useFileDiff": true,
+    "queuePollInterval": 5000
+  },
+  "worship-submissions": {
+    "useFileDiff": false,
+    "queuePollInterval": 3000
+  }
+}
+```
+
+##### Regular Config + Nested Override
+
+Original config is:
+```
+{
+  "submissions": {
+    "key": "B"
+  },
+  "worship-submissions": {
+    "useFileDiff": false,
+    "useVirtuosoForExpensiveSelects": [false, false]
+  }
+}
+```
+with the following override:
+```
+{
+  "worship-submissions": {
+    "useVirtuosoForExpensiveSelects": [true, true]
+  }
+}
+```
+will become:
+```
+{
+  "submissions": {
+    "key": "B"
+  },
+  "worship-submissions": {
+    "useFileDiff": false,
+    "useVirtuosoForExpensiveSelects": [true, true]
+  }
+}
+```
+
+The user will also receive a **warning** that their original value is being completely replaced by a new object.
 
 ## simple mode
 For example:
