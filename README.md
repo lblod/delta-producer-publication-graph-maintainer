@@ -77,7 +77,7 @@ There are three situations to consider:
 ##### Regular Config + No Override
 
 Original config:
-```
+```json
 {
   "submissions": {
     "key": "B"
@@ -92,7 +92,7 @@ with no overrides => **Final config = Original config**.
 ##### Regular Config + Override
 
 Original config:
-```
+```json
 {
   "submissions": {
     "key": "B",
@@ -106,7 +106,7 @@ Original config:
 }
 ```
 with the following override config:
-```
+```json
 {
   "submissions": {
     "key": "NEW_B",
@@ -118,7 +118,7 @@ with the following override config:
 }
 ```
 leads to the following **final config**:
-```
+```json
 {
   "submissions": {
     "key": "NEW_B",
@@ -135,7 +135,7 @@ leads to the following **final config**:
 ##### Regular Config + Nested Override
 
 Original config is:
-```
+```json
 {
   "submissions": {
     "key": "B"
@@ -147,7 +147,7 @@ Original config is:
 }
 ```
 with the following override:
-```
+```json
 {
   "worship-submissions": {
     "useVirtuosoForExpensiveSelects": [true, true]
@@ -155,7 +155,7 @@ with the following override:
 }
 ```
 will become:
-```
+```json
 {
   "submissions": {
     "key": "B"
@@ -172,7 +172,7 @@ The user will also receive a **warning** that their original value is being comp
 ## simple mode
 For example:
 
-```
+```json
 {
   "export": [
     {
