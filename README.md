@@ -289,7 +289,10 @@ A resource may have multiple types and therefore map to multiple export configur
 
 #### Deltastream configuration
 The deltastream configuration allows for multiple deltastreams in one instance, it is specified by `CONFIG_SERVICES_JSON_PATH`.
+
 The json file represents a dictionary of service configurations with the key being the name of the service and the value the configuration.
+
+In order to add configuration overrides, use `CONFIG_SERVICES_OVERRIDE_JSON_PATH` to specify the file path for your configuration override file.
 
 ##### Properties
 
