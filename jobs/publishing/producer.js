@@ -207,7 +207,7 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
           console.log(
               `Recursively checking for enrichments based on the newly inserted triples for resource <${uri}>.`);
         const recursiveTypeCache = await buildTypeCache(service_config, service_export_config, {inserts: resourceExport, deletes: []});
-        const recursiveTriples = await enrichInsertedChangeset(config, resourceExport, recursiveTypeCache, processedResources);
+        const recursiveTriples = await enrichInsertedChangeset(service_config, service_export_config, resourceExport, recursiveTypeCache, processedResources);
         triplesToInsert.push(...recursiveTriples);
       } else if (LOG_DELTA_REWRITE) {
         console.log(`Resource <${uri}> doesn't have a path to the export concept scheme. Ignoring this resource.`);
