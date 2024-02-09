@@ -1,4 +1,7 @@
 # Changelog
+## 1.0.5 (2024-02-09)
+- Fix broken function call with recursive typecache build
+  - In case of conceptSchemeSelector this fixes the incomplete exports
 ## 1.0.4 (2024-01-09)
 - Fix parsing of config data and its default settings. The boolean logic was incorrect, but this is hopefully(!) corrected now.
 ## 1.0.3 (2023-10-20)
