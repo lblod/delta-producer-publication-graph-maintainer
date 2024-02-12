@@ -4,7 +4,7 @@ import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import {
   Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
 } from './env-config';
-import DeltaPublisher from './files-publisher/delta-publisher';;
+import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
