@@ -1,5 +1,5 @@
 import { chunk } from 'lodash';
-import DeltaPublisher from './files-publisher/delta-publisher';
+import DeltaPublisher from '../../files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
 
 import {

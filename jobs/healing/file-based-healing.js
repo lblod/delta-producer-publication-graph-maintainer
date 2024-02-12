@@ -1,6 +1,6 @@
 import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
-import DeltaPublisher from './files-publisher/delta-publisher';
+import DeltaPublisher from '../../files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 
