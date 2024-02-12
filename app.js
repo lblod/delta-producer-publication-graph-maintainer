@@ -92,7 +92,7 @@ for (const name in services){
     try {
       const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
       if (service_config.serveDeltaFiles) {
-        await publishDeltaFiles(service_config, insertedDeltaData);
+        await publishDeltaFiles(service_config, insertedDeltaData, true); //Note: this is a workaround
       }
     } catch (error) {
       console.error(error);
