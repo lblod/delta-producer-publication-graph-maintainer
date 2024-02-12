@@ -1,5 +1,5 @@
 import { chunk } from 'lodash';
-import { publishDeltaFiles } from "../../files-publisher/main";
+import DeltaPublisher from './files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
 
 import {
@@ -145,12 +145,13 @@ function diffTriplesData(serviceConfig, target, source) {
 }
 
 async function pushToDeltaFiles(serviceConfig, operation, triples, fileDiffMaxArraySize) {
+  const deltaPublisher = new DeltaPublisher(serviceConfig);
   let chunkedTriples = chunk(triples, fileDiffMaxArraySize);
   // To make sure the array does not explode in memory we push the update regularly
   for(let triplesBatch of chunkedTriples) {
     triplesBatch = triplesBatch.map(t => appendPublicationGraph(serviceConfig, t.originalFormat));
     const data = operation == "DELETE" ?
           { deletes: triplesBatch, inserts: []} : {deletes: [], inserts: triplesBatch};
-    await publishDeltaFiles(serviceConfig, data, true);
+    await deltaPublisher.publishDeltaFiles(data, true);
   }
 }
