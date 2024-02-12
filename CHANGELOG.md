@@ -1,4 +1,6 @@
 # Changelog
+## 1.0.6 (2024-02-12)
+- Fixing a couple of missing await statements and broken function calls which may result in silent errors
 ## 1.0.5 (2024-02-09)
 - Fix broken function call with recursive typecache build
   - In case of conceptSchemeSelector this fixes the incomplete exports
