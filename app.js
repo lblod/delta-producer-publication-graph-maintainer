@@ -21,11 +21,11 @@ let services = require(CONFIG_SERVICES_JSON_PATH);
 console.log("Services config is: ", services);
 for (const name in services){
   let service = services[name];
-  const service_config = new Config(service);
+  const service_config = new Config(service, name);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
   const producerQueue = new ProcessingQueue(service_config);
-  const deltaPublisher = new DeltaPublisher(service_config, name);
+  const deltaPublisher = new DeltaPublisher(service_config);
 
   app.post(service_config.deltaPath, async function (req, res) {
     try {

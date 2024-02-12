@@ -9,9 +9,9 @@ import { LOG_INCOMING_DELTA } from "../env-config";
  */
 export default class DeltaPublisher {
 
-  constructor(serviceConfig, deltaStreamName) {
-    this.deltaStreamName = deltaStreamName;
+  constructor(serviceConfig) {
     this.serviceConfig = serviceConfig;
+    this.deltaStreamName = this.serviceConfig.name;
     this.deltaCache = new DeltaCache();
     this.hasTimeout = null;
 
