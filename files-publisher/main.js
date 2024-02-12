@@ -46,14 +46,14 @@ export async function getDeltaFiles(service_config, since ){
 }
 
 function triggerTimeout(service_config){
-  setTimeout( () => {
+  setTimeout(async () => {
     try {
       hasTimeout = false;
-      cache.generateDeltaFile(service_config);
+      await cache.generateDeltaFile(service_config);
     }
     catch(e){
       console.error(`Error generating delta file ${e}`);
-      storeError(e);
+      await storeError(service_config, e);
     }
   }, service_config.deltaInterval );
   hasTimeout = true;
