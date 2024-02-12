@@ -1,4 +1,6 @@
 # Changelog
+## 1.0.7 (2024-02-12)
+- There is an issue with delta-cache and managing multiple streams. For now as a workaround, we publish on the spot
 ## 1.0.6 (2024-02-12)
 - Fixing a couple of missing await statements and broken function calls which may result in silent errors
 ## 1.0.5 (2024-02-09)
