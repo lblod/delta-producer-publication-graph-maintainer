@@ -9,7 +9,7 @@ import {PUBLICATION_MU_AUTH_ENDPOINT, PUBLICATION_VIRTUOSO_ENDPOINT} from "../..
 
 //TODO: consider bringing the processing of publication under a job operation.
 // It feels a bit like over kill right now to do so.
-export async function updatePublicationGraph(service_config, service_export_config, deltaPayload ){
+export async function prepareDataForPublication(service_config, service_export_config, deltaPayload ){
   try {
     let delta = await produceDelta(service_config, service_export_config, deltaPayload);
     //To remove unnecessary deltas, we filter them out.
@@ -25,31 +25,36 @@ export async function updatePublicationGraph(service_config, service_export_conf
           .flatten()
           .value();
 
-    if(deletes.length){
-      await batchedUpdate(deletes.map(t => serializeTriple(t)),
-                          service_config.publicationGraph,
-                          'DELETE',
-                          service_config.updatePublicationGraphSleep,
-                          100,
-                          { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
-                          PUBLICATION_MU_AUTH_ENDPOINT
-                         );
-    }
+    const updatePublicationGraphCallback = async () => {
+      if(deletes.length){
+        await batchedUpdate(deletes.map(t => serializeTriple(t)),
+                            service_config.publicationGraph,
+                            'DELETE',
+                            service_config.updatePublicationGraphSleep,
+                            100,
+                            { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
+                            PUBLICATION_MU_AUTH_ENDPOINT
+                           );
+      }
 
-    if(inserts.length){
-      await batchedUpdate(inserts.map(t => serializeTriple(t)),
-                          service_config.publicationGraph,
-                          'INSERT',
-                          service_config.updatePublicationGraphSleep,
-                          100,
-                          { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
-                          PUBLICATION_MU_AUTH_ENDPOINT
-                         );
-    }
+      if(inserts.length){
+        await batchedUpdate(inserts.map(t => serializeTriple(t)),
+                            service_config.publicationGraph,
+                            'INSERT',
+                            service_config.updatePublicationGraphSleep,
+                            100,
+                            { 'mu-call-scope-id':  service_config.muCallScopeIdPublicationGraphMaintenance },
+                            PUBLICATION_MU_AUTH_ENDPOINT
+                           );
+      }
+    };
 
     return {
-      inserts: inserts.map(t => appendPublicationGraph(service_config, t)),
-      deletes: deletes.map(t => appendPublicationGraph(service_config, t))
+      deltas: {
+        inserts: inserts.map(t => appendPublicationGraph(service_config, t)),
+        deletes: deletes.map(t => appendPublicationGraph(service_config, t))
+      },
+      updatePublicationGraphCallback
     };
   }
   catch(error){

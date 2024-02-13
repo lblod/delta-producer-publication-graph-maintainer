@@ -1,50 +1,58 @@
-import DeltaCache from './delta-cache';
+import DeltaFilesManager from './delta-delta-files-manager';
 import { storeError } from '../lib/utils';
 import { LOG_INCOMING_DELTA } from "../env-config";
 
-/**
- * Manages the publication of delta files, i.e. the insertions and deletions.
- * Utilizes a delta cache to store these changes before generating and publishing delta files;
- *  this optimises the number of files it creates.
- */
 export default class DeltaPublisher {
 
   constructor(serviceConfig) {
     this.serviceConfig = serviceConfig;
     this.deltaStreamName = this.serviceConfig.name;
-    this.deltaCache = new DeltaCache();
+    this.deltaFilesManager = new DeltaFilesManager();
+    this.cache = [];
     this.hasTimeout = null;
 
     console.log(`Initialized delta publisher for delta stream: ${this.deltaStreamName}`);
   }
 
-  /**
-   * Publishes delta changes by either immediately generating a delta file or scheduling it for later.
-   * @param {Object} delta - Object containing the delta changes with `inserts` and `deletes`.
-   * @param {boolean} [generateOntheSpot=false] - Whether to generate the delta file immediately.
-   */
-  async publishDeltaFiles(delta, generateOntheSpot = false ){
-    if((delta.inserts.length || delta.deletes.length)){
+  async publish() {
+    const deltas = this.cache.map(d => d.deltas);
+    const callbacks = this.cache.map(d => d.updatePublicationGraphCallback);
+
+    // flush cache, the next calls are async so data might come in while the procedure is ongoing
+    this.cache = [];
+
+    // publish the files
+    await this.deltaFilesManager.generateDeltaFiles(this.serviceConfig, deltas);
+    console.log(`Published delta files for: ${this.deltaStreamName}`);
+
+    // update the publication graph
+    for(const callback of callbacks) {
+      await callback();
+    }
+    console.log(`Updated the publication graph for: ${this.deltaStreamName}`);
+  }
+
+  async schedulePublication(dataToPublish, generateOntheSpot = false ){
+    if((dataToPublish.deltas.inserts.length || dataToPublish.deltas.deletes.length)){
       console.log(`Scheduling delta files publication for: ${this.deltaStreamName}`);
 
+      this.cache.push(dataToPublish);
+
       if (LOG_INCOMING_DELTA) {
-        console.log(`Receiving delta ${JSON.stringify(delta)}`);
+        console.log(`Receiving delta ${JSON.stringify(dataToPublish.deltas)}`);
       }
 
       if(generateOntheSpot) {
-        this.deltaCache.push(delta);
-        await this.deltaCache.generateDeltaFile(this.serviceConfig);
-        console.log(`Published delta files (on the spot) for: ${this.deltaStreamName}`);
+        await this.publish();
+        console.log(`Published data (on the spot) for: ${this.deltaStreamName}`);
       }
       else {
         const processDelta = async function(publisherInstance) {
           try {
 
             if (publisherInstance.serviceConfig.logOutgoingDelta) {
-              console.log(`Pushing onto cache ${JSON.stringify(delta)} for: ${publisherInstance.deltaStreamName}`);
+              console.log(`Pushing onto cache ${JSON.stringify(dataToPublish.deltas)} for: ${publisherInstance.deltaStreamName}`);
             }
-
-            publisherInstance.deltaCache.push(delta);
 
             if( !publisherInstance.hasTimeout ){
               publisherInstance.triggerTimeout();
@@ -60,14 +68,10 @@ export default class DeltaPublisher {
     }
   }
 
-  /**
-   * Retrieves delta files generated since the specified timestamp.
-   * @param {string} [since=new Date().toISOString()] - Timestamp to fetch delta files from.
-   * @returns {Promise<Array>} Collection of delta files.
-   */
   async getDeltaFiles(since){
+    // TODO: move this outside of the publisher somehow
     since = since || new Date().toISOString();
-    const files = await this.deltaCache.getDeltaFiles(this.serviceConfig, since);
+    const files = await this.deltaFilesManager.getDeltaFiles(this.serviceConfig, since);
     console.log(`Retreived ${files?.length} for: ${this.deltaStreamName}`);
     return files;
   }
@@ -79,8 +83,8 @@ export default class DeltaPublisher {
     setTimeout(async () => {
       try {
         this.hasTimeout = false;
-        await this.deltaCache.generateDeltaFile(this.serviceConfig);
-        console.log(`Published delta files (scheduled) for: ${this.deltaStreamName}`);
+        await this.publish();
+        console.log(`Published data (scheduled) for: ${this.deltaStreamName}`);
       }
       catch(e){
         console.error(`Error generating delta file ${e}`);
