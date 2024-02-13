@@ -13,7 +13,8 @@ export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE) || 
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
 
 export class Config {
-  constructor(configData) {
+  constructor(configData, name) {
+    this.name = name;
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri;
     //TODO: why here?

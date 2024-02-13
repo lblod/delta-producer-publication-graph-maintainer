@@ -1,6 +1,6 @@
 import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
-import { publishDeltaFiles } from "../../files-publisher/main";
+import DeltaPublisher from '../../files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 
@@ -256,6 +256,7 @@ async function updatePublicationGraph(
 }
 
 async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffMaxArraySize) {
+  const deltaPublisher = new DeltaPublisher(serviceConfig);
   let triples = [];
   let rl = new Readlines(filePointer.name);
   let line, linesCounter = 0; //keep track of the amount of lines read, since performance
@@ -268,7 +269,9 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
       triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
       const data = operation == "DELETE" ?
             { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
-      await publishDeltaFiles(serviceConfig, data, true);
+
+      await deltaPublisher.publishDeltaFiles(data, true);
+
       triples = [];
       linesCounter = 0;
     }
@@ -278,5 +281,5 @@ async function pushToDeltaFiles(serviceConfig, operation, filePointer, fileDiffM
   triples = triples.map(t => appendPublicationGraph(serviceConfig, t));
   const data = operation == "DELETE" ?
         { deletes: triples, inserts: []} : {deletes: [], inserts: triples};
-  await publishDeltaFiles(serviceConfig, data, true);
+  await deltaPublisher.publishDeltaFiles(data, true);
 }

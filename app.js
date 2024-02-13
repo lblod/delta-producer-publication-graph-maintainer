@@ -4,7 +4,7 @@ import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
 import {
   Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
 } from './env-config';
-import { getDeltaFiles, publishDeltaFiles } from './files-publisher/main';
+import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
@@ -21,10 +21,11 @@ let services = require(CONFIG_SERVICES_JSON_PATH);
 console.log("Services config is: ", services);
 for (const name in services){
   let service = services[name];
-  const service_config = new Config(service);
+  const service_config = new Config(service, name);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
   const producerQueue = new ProcessingQueue(service_config);
+  const deltaPublisher = new DeltaPublisher(service_config);
 
   app.post(service_config.deltaPath, async function (req, res) {
     try {
@@ -78,7 +79,7 @@ for (const name in services){
       } else {
         //normal operation mode: maintaining the publication graph
         //Put in a queue, because we want to make sure to have them ordered.
-        producerQueue.addJob(async () => await runPublicationFlow(service_config, service_export_config, body));
+        producerQueue.addJob(async () => await runPublicationFlow(service_config, service_export_config, deltaPublisher, body));
       }
       res.status(202).send();
     } catch (error) {
@@ -88,11 +89,11 @@ for (const name in services){
     }
   });
 
-  async function runPublicationFlow(service_config, service_export_config, deltas) {
+  async function runPublicationFlow(service_config, service_export_config, deltaPublisher, deltas) {
     try {
       const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
       if (service_config.serveDeltaFiles) {
-        await publishDeltaFiles(service_config, insertedDeltaData, true); //Note: this is a workaround
+        await deltaPublisher.publishDeltaFiles(insertedDeltaData);
       }
     } catch (error) {
       console.error(error);
@@ -103,7 +104,7 @@ for (const name in services){
   if (service_config.serveDeltaFiles) {
 //This endpoint only makes sense if serveDeltaFiles is set to true;
     app.get(service_config.filesPath, async function (req, res) {
-      const files = await getDeltaFiles(service_config, req.query.since);
+      const files = await deltaPublisher.getDeltaFiles(req.query.since);
       res.json({data: files});
     });
   }
