@@ -6,7 +6,7 @@ import {
 } from './env-config';
 import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
-import { updatePublicationGraph } from './jobs/publishing/main';
+import { prepareDataForPublication } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
 import {loadConfiguration, storeError} from './lib/utils';
@@ -91,9 +91,11 @@ for (const name in services){
 
   async function runPublicationFlow(service_config, service_export_config, deltaPublisher, deltas) {
     try {
-      const insertedDeltaData = await updatePublicationGraph(service_config, service_export_config, deltas);
+      const preparedData = await prepareDataForPublication(service_config, service_export_config, deltas);
       if (service_config.serveDeltaFiles) {
-        await deltaPublisher.publishDeltaFiles(insertedDeltaData);
+        await deltaPublisher.schedulePublication(preparedData);
+      } else {
+        await preparedData.updatePublicationGraphCallback();
       }
     } catch (error) {
       console.error(error);
