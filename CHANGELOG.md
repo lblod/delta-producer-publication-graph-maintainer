@@ -1,6 +1,9 @@
 # Changelog
+## 1.0.8 (2024-02-13)
+- Caches are now created per delta-stream and handled by a separate `DeltaPublisher` class.
+  - Fixes issues with cache management and timeouts ([#25](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/25)).
 ## 1.0.7 (2024-02-12)
-- There is an issue with delta-cache and managing multiple streams. For now as a workaround, we publish on the spot
+- There is an issue with delta-cache and managing multiple streams. For now as a workaround, we publish on the spot.
 ## 1.0.6 (2024-02-12)
 - Fixing a couple of missing await statements and broken function calls which may result in silent errors
 ## 1.0.5 (2024-02-09)
