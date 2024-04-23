@@ -142,8 +142,9 @@ export function generateGetSourceTriplesQuery({
       ?subject a ${sparqlEscapeUri(type)}.
       GRAPH ?graph {
         ?subject ?predicate ?object.
-        ${additionalFilter ? additionalFilter : ''}
       }
+
+      ${additionalFilter ? additionalFilter : ''}
 
       ${pathToConceptSchemeString}
 
