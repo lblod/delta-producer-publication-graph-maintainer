@@ -518,21 +518,34 @@ async function isInScopeOfConfiguration(service_config, service_export_config, s
 }
 
 function configGraphFilter(service_config, config) {
+
+  const { additionalFilter,
+          pathToConceptScheme,
+          graphsFilter,
+          hasRegexGraphsFilter,
+          type,
+          strictTypeExport,
+          healingOptions
+        } = config;
+
   // Either we want the triple to reside in a specific (set) of graphs,
   // or not (exclusively) in the publication graph.
-  let filter = `FILTER(?graph NOT IN (${sparqlEscapeUri(service_config.publicationGraph)}))`;
+  let graphsFilterStr = `FILTER(?graph NOT IN (${sparqlEscapeUri(service_config.publicationGraph)}))`;
 
-  if (config.graphsFilter.length) {
-
-    const graphsFilterStrPart = config
-        .graphsFilter
-        .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
-        .join(' || ');
-
-    filter = `FILTER ( ${graphsFilterStrPart} )`;
+  if(!hasRegexGraphsFilter) {
+    if(graphsFilter.length > 0) {
+      const graphsSetString = graphsFilter.map(g => sparqlEscapeUri(g)).join(',\n');
+      graphsFilterStr = `FILTER(?graph IN (${graphsSetString}))`;
+    }
+  }
+  else if(hasRegexGraphsFilter && graphsFilter.length > 0) {
+    graphsFilterStr = graphsFilter
+      .map(g => `regex(str(?graph), ${sparqlEscapeString(g)})`)
+      .join(' || ');
+    graphsFilterStr = `FILTER ( ${graphsFilterStr} )`;
   }
 
-  return filter;
+  return graphsFilterStr;
 }
 
 function publicationGraphFilter(service_config) {
