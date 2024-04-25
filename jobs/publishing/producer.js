@@ -261,7 +261,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
   const triplesToDelete = [];
   let subjectsForPotentialCascadeRemoval = [];
 
-  for (let subjectUri of subjectUris) {
+  for (let subjectUri of [ ...new Set(subjectUris) ]) {
     const allSourceData = [];
     const allPublishedData = [];
 
@@ -300,7 +300,8 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
   }
   console.log(`
     The following subjects were marked as deletion: ${subjectUris.join('\n')}.
-    Resulted in triples marked as delete in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
+    Resulted in triples marked as delete ${triplesToDelete.length}
+    in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
   `);
 
 
