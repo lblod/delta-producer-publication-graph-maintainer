@@ -238,26 +238,28 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
 }
 
 /**
- * Rewrite the received triples to delete to a delete changeset relevant for the export of conceptSchemes.
+ * Calculates the triples to delete from the publication graph.
+ * Based on the configuration, it calculates the diffs between what is published and what should be removed.
+ * There is an extra complication, when working with conceptScheme based configurations.
+ * Then it should calculate a potential 'CASCADE DELETE', based on the conceptscheme.
  *
- * Deletion of 1 triple may lead to a bunch of resources to be deleted,
- * because the deleted triple breaks the path to the export concept scheme.
+ * For instance, deleting a triple relating to a mandaat:Mandataris might also require deleting the associated person,
+ * unless that person is linked to another mandaat:Mandataris.
  *
- * E.g. Deletion of a mandatee may cause the deletion of the person as well,
- *       unless the person is still related to another mandatee.
+ * @param {Object} service_config - Configuration object for the service containing the config for the specific delta stream.
+ * @param {Object} service_export_config - Export configuration of the resources to export themselves.
+ * @param {Array<string>} subjectUris - URIs of the subjects that are potentially affected by the changeset deletions.
+ * @param {Array<Object>} typeCache - A cache of type configurations, each containing URIs and their respective export settings.
+ * @param {boolean} [recursivelyCalled=false] - Indicates whether this function is being called recursively to handle cascading deletions.
+ *                                              -  That's mereley for logging purposes...
  *
- * Note: additional triples to delete are computed only based on the data that is still
- * in the store. Other triples that need to be deleted, that are not in the store anymore,
- * will arrive in (different) delta changesets.
+ * @returns {Promise<Array<Object>>} The list of triples marked for delete.
+ *
  */
 async function rewriteDeletedChangeset(service_config, service_export_config, subjectUris, typeCache, recursivelyCalled = false) {
   const triplesToDelete = [];
   const subjectsForPotentialCascadeRemoval = [];
-  const processedResources = []; // tmp cache of cascadely added resources
 
-  // For each triple of the changeset, check if it is relevant for the export.
-  // Ie. the subject doesn't have any path to the export concept-scheme and the predicate is configured to be exported
-  // There is an implicit assumption that a resource only has 1 kind-of path to the export CS (but there may be multiple instances of this path)
   for (let subjectUri of subjectUris) {
     const allSourceData = [];
     const allPublishedData = [];
@@ -266,7 +268,6 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
 
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-
         const sourceData = await exportResource(service_config, subjectUri, config);
         const publishedData = await exportResource(service_config, subjectUri, config, true);
 
@@ -278,7 +279,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
     const dataToRemove = diffDeltas(allSourceData, allPublishedData).onlyInTarget;
     triplesToDelete.push(...dataToRemove);
 
-    // Here we need to figure out wether extra subjects need to be removed (cf. the case mandataris in documentation)
+    // Determine if additional subjects should be removed based on the removal logic outlined in the documentation.
     const normalRelations = dataToRemove
           .filter(t => t.subject.value == subjectUri && t.object.type == 'uri')
           .map(t => t.object.value);
@@ -304,7 +305,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
     // Note:  it's a bit abusing the interface of this method. Subject to refactor.
     if (LOG_DELTA_REWRITE) {
       console.log(`
-        The following subjects ned to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
+        The following subjects need to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
       `);
     }
 
