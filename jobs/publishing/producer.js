@@ -476,7 +476,10 @@ function getChildConfigurations(service_export_config, config) {
  * Note 2:
  *    by default the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
-async function isInScopeOfConfiguration(service_config, service_export_config, subject, config, graphFilterBuilder = () => configGraphFilter(service_config, config)) {
+async function isInScopeOfConfiguration(service_config,
+                                        service_export_config,
+                                        subject, config,
+                                        graphFilterBuilder = () => generateSourceGraphFilter(service_config, config)) {
 
   let additionalFilter = '';
 
@@ -517,7 +520,7 @@ async function isInScopeOfConfiguration(service_config, service_export_config, s
   return result.results.bindings.length;
 }
 
-function configGraphFilter(service_config, config) {
+function generateSourceGraphFilter(service_config, config) {
 
   const { additionalFilter,
           pathToConceptScheme,
