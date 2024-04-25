@@ -6,9 +6,13 @@ import {
   sparqlEscapePredicate,
   normalizePredicate,
   serializeTriple,
-  isSamePath
+  isSamePath,
+  parseResult
 } from '../../lib/utils';
-import {LOG_DELTA_REWRITE} from "../../env-config";
+import {
+  LOG_DELTA_REWRITE,
+  PUBLICATION_MU_AUTH_ENDPOINT
+} from "../../env-config";
 
 // TODO add support for a prefix map in the export configuration
 //      preprocess the imported config by resolving all prefixed URIs with full URIs
@@ -247,6 +251,16 @@ async function rewriteDeletedChangeset(service_config, service_export_config, ch
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
         const predicate = triple.predicate.value;
+
+        // START: temporary workaround.
+        // When returning false:  no further data extraction is necessary for deletion.
+        // When returning true, the process continues as previously implemented.
+        // Note: The current implementation of `rewriteDeletedChangeset` is simply broken and needs re-think.
+        // This to makes deletion less aggressive without breaking existing functionality.
+        const isManagedByConfig = await isDeletedTripleManagedByConfig(triple, service_config, config);
+        if (!isManagedByConfig) continue;
+        // END: temporary workaround.
+
         const isOutOfScope = !(await isInScopeOfConfiguration(service_config, service_export_config, uri, config));
         // We don't check if the resource has already been processed,
         // different configuration could contain different predicates
@@ -564,4 +578,55 @@ function isConfiguredForExport(triple, config) {
   } else {
     return false;
   }
+}
+
+/**
+ * Checks whether a deleted RDF triple is managed by a given configuration.
+ * This function determines if a triple is associated with a managed configuration in the publication graph
+ * Note:
+ *   The algorithm is not fully implemented and currently relies on only checking if the triple's type and predicate match any configuration.
+ *   This means that even if a match is found, it does not conclusively indicate management by the config.
+ *   Depending on it where it's used thats a not necessarily a bad thing.
+ *   Be warned. So no false negatives, but potentially a lot of false positives.
+ *
+ * @async
+ * @param {Object} triple - The triple to check, with properties: subject, predicate, object.
+ * @param {Object} service_config - The service configuration containing publication graph details.
+ * @param {Object} config - The specific configuration to check against, containing type details.
+ * @returns {Promise<boolean>} - Returns true if the triple matches the configuration criteria, otherwise false.
+ */
+async function isDeletedTripleManagedByConfig(triple, service_config, config) {
+
+  const { predicate, subject, object } = {
+    predicate: triple.predicate.value,
+    subject: triple.subject.value,
+    object: triple.object.value
+  };
+
+  const hasBeenPublishedUnderConfig = `
+    SELECT DISTINCT ?object WHERE {
+      GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
+        ${sparqlEscapeUri(subject)} a ${sparqlEscapeUri(config.type)};
+          ${sparqlEscapeUri(predicate)} ?object.
+      }
+    }
+  `;
+
+  const result = await query(
+    hasBeenPublishedUnderConfig, {},
+    { sparqlEndpoint: PUBLICATION_MU_AUTH_ENDPOINT, mayRetry: true }
+  );
+
+
+  /**
+   * Note: If returning true, it may not nessarily reflect the reality.
+   * Potential sources of error include:
+   * - False positives since the function does not verify the specific graph from which the triple was deleted.
+   *   Even if we have a match, it might be related to an unrelated update in a graph in source we don't care about..
+   * - The function does not check `additionalFilter` or `pathToConceptScheme`.
+   *   Without these checks, the match may incorrectly assume management by the configuration.
+   * - We still can have other potential cases not descibed here.
+   */
+  const hasMatch = parseResult(result).some(r => r.object === object);
+  return hasMatch;
 }
