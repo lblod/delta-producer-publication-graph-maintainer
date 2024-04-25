@@ -77,18 +77,30 @@ async function buildTypeCache(service_config, service_export_config, changeSet) 
     console.log(`Building type cache for ${uris.length} URIs based on types found in the store and the changeset.`);
 
   for (let uri of uris) {
-    const result = await query(`
+    const resultFromSourceStore = await query(`
       SELECT DISTINCT ?type WHERE {
         GRAPH ?g {
           ${sparqlEscapeUri(uri)} a ?type.
         }
       }
     `);
-    const typesFromStore = result.results.bindings.map(b => b['type'].value);
+    const typesFromStore = resultFromSourceStore.results.bindings.map(b => b['type'].value);
+
+    const resultFromPublicationStore = await query(`
+      SELECT DISTINCT ?type WHERE {
+        GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
+          ${sparqlEscapeUri(uri)} a ?type.
+        }
+      }
+    `, {}, { sparqlEndpoint: PUBLICATION_MU_AUTH_ENDPOINT, mayRetry: true });
+    const typesFromPublicationStore = resultFromPublicationStore.results.bindings.map(b => b['type'].value);
+
     const typesFromChangeset = triples.filter(
         t => t.subject.value == uri && t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
-                                      .map(t => t.object.value);
-    const types = uniq([...typesFromStore, ...typesFromChangeset]);
+          .map(t => t.object.value);
+
+
+    const types = uniq([...typesFromStore, ...typesFromChangeset, ...typesFromPublicationStore]);
     if (LOG_DELTA_REWRITE)
       console.log(`Found ${types.length} distinct types for URI <${uri}>.`);
 
