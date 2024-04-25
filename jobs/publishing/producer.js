@@ -306,13 +306,15 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
   if(subjectsForPotentialCascadeRemoval.length) {
     // Note:  it's a bit abusing the interface of this method. Subject to refactor.
     if (LOG_DELTA_REWRITE) {
+    const updatedTypeCache = await buildTypeCache(
+      service_config, service_export_config, { deletes: triplesToDelete });
+
+    const hasCacheTypePathToConceptScheme = updatedTypeCache.map(t => t.config).some(c => c.pathToConceptScheme);
       console.log(`
         The following subjects need to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
       `);
     }
 
-    const updatedTypeCache = await buildTypeCache(
-      service_config, service_export_config, { deletes: triplesToDelete });
     const extraTriplesToDelete = await rewriteDeletedChangeset(service_config,
                                                                service_export_config,
                                                                subjectsForPotentialCascadeRemoval,
