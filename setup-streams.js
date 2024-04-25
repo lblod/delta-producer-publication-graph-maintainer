@@ -1,15 +1,12 @@
-import { updateSudo } from '@lblod/mu-auth-sudo';
-import bodyParser from 'body-parser';
 import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
+import { updateSudo } from '@lblod/mu-auth-sudo';
 import {
-  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
+  LOG_INCOMING_DELTA
 } from './env-config';
-import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
-import { ProcessingQueue } from './lib/processing-queue';
-import {loadConfiguration, storeError} from './lib/utils';
+import { storeError } from './lib/utils';
 
 export async function setupDeltaProcessorForconfig(service_config,
                                                    service_export_config,
@@ -131,9 +128,6 @@ export async function setupDelaLoginEndpoint(service_config) {
     }
   };
 }
-
-
-
 
 async function runPublicationFlow(service_config, service_export_config, deltaPublisher, deltas) {
   try {
