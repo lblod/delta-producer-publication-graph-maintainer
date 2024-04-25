@@ -594,10 +594,6 @@ function generateSourceGraphFilter(service_config, config) {
   return graphsFilterStr;
 }
 
-function publicationGraphFilter(service_config) {
-  return `FILTER ( regex(str(?graph), ${sparqlEscapeString(service_config.publicationGraph)}) )`;
-}
-
 function isConfiguredForExport(triple, config) {
   const predicate = triple.predicate.value;
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
