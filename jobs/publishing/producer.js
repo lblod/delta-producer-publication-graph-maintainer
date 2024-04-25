@@ -8,7 +8,10 @@ import {
   serializeTriple,
   isSamePath
 } from '../../lib/utils';
-import {LOG_DELTA_REWRITE} from "../../env-config";
+import {
+  LOG_DELTA_REWRITE,
+  PUBLICATION_MU_AUTH_ENDPOINT
+} from "../../env-config";
 
 // TODO add support for a prefix map in the export configuration
 //      preprocess the imported config by resolving all prefixed URIs with full URIs
@@ -31,7 +34,8 @@ export async function produceDelta(service_config, service_export_config, delta)
 
     if (LOG_DELTA_REWRITE)
       console.log(`Rewriting deleted changeSet containing ${changeSet.deletes.length} triples`);
-    const deletes = await rewriteDeletedChangeset(service_config, service_export_config, changeSet.deletes, typeCache);
+    const deletedSubjects = changeSet.deletes.map(t => t.subject.value);
+    const deletes = await rewriteDeletedChangeset(service_config, service_export_config, deletedSubjects, typeCache);
     updatedChangeSet.deletes.push(...deletes);
 
     if (updatedChangeSet.inserts.length || updatedChangeSet.deletes.length)
@@ -246,51 +250,74 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
  * in the store. Other triples that need to be deleted, that are not in the store anymore,
  * will arrive in (different) delta changesets.
  */
-async function rewriteDeletedChangeset(service_config, service_export_config, changeSet, typeCache) {
+async function rewriteDeletedChangeset(service_config, service_export_config, subjectUris, typeCache, recursivelyCalled = false) {
   const triplesToDelete = [];
-  const processedResources = []; // tmp cache of recursively added resources
+  const subjectsForPotentialCascadeRemoval = [];
+  const processedResources = []; // tmp cache of cascadely added resources
 
   // For each triple of the changeset, check if it is relevant for the export.
   // Ie. the subject doesn't have any path to the export concept-scheme and the predicate is configured to be exported
   // There is an implicit assumption that a resource only has 1 kind-of path to the export CS (but there may be multiple instances of this path)
-  for (let triple of changeSet) {
-    const uri = triple.subject.value;
-    const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
+  for (let subjectUri of subjectUris) {
+    const allSourceData = [];
+    const allPublishedData = [];
+
+    const exportConfigurations = typeCache.filter(e => e.uri === subjectUri).map(e => e.config);
+
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        const predicate = triple.predicate.value;
-        const isOutOfScope = !(await isInScopeOfConfiguration(service_config, service_export_config, uri, config));
-        // We don't check if the resource has already been processed,
-        // different configuration could contain different predicates
-        if (isOutOfScope) {
-          processedResources.push(uri);
-          if (LOG_DELTA_REWRITE)
-            console.log(`Additional Filters found, enriching delete changeset with export of resource <${uri}>.`);
-          // If the resource is out-of-scope/to-be-deleted, we need to get the full resource from the publication graph.
-          const resourceExport = await exportResource(service_config, uri, config, () => publicationGraphFilter(service_config));
-          triplesToDelete.push(...resourceExport);
-        } else if (isConfiguredForExport(triple, config)) {
-          if (LOG_DELTA_REWRITE)
-            console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
-          triplesToDelete.push(triple);
-        } else if (config.LOG_DELTA_REWRITE) {
-          console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
-        }
-        if (LOG_DELTA_REWRITE)
-          console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
+
+        const sourceData = await exportResource(service_config, subjectUri, config);
+        const publishedData = await exportResource(service_config, subjectUri, config, true);
+
+        allSourceData.push(...sourceData);
+        allPublishedData.push(...publishedData);
       }
-    } else if (LOG_DELTA_REWRITE) {
-      console.log(
-          `Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
+
+    const dataToRemove = diffDeltas(allSourceData, allPublishedData).onlyInTarget;
+    triplesToDelete.push(...dataToRemove);
+
+    // Here we need to figure out wether extra subjects need to be removed (cf. the case mandataris in documentation)
+    const normalRelations = dataToRemove
+          .filter(t => t.subject.value == subjectUri && t.object.type == 'uri')
+          .map(t => t.object.value);
+    subjectsForPotentialCascadeRemoval.push(...normalRelations);
+
+    const inverseRelations = dataToRemove
+          .filter(t => t.subject.value != subjectUri)
+          .map(t => t.subject.value);
+    subjectsForPotentialCascadeRemoval.push(...inverseRelations);
   }
 
-  const enrichments = await enrichDeletedChangeset(service_config, service_export_config, changeSet, typeCache, processedResources);
   if (LOG_DELTA_REWRITE) {
-    console.log(`Checked ${processedResources.length} additional resources to delete.`);
-    console.log(`Adding ${enrichments.length} triples to delete to the changeset.`);
+    if(recursivelyCalled) {
+      console.log(`Calculating triples to be potentially removed in cascade.`);
+    }
+    console.log(`
+      The following subjects were marked as deletion: ${subjectUris.join('\n')}.
+      Resulted in triples marked as delete in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
+    `);
   }
-  triplesToDelete.push(...enrichments);
+
+  if(subjectsForPotentialCascadeRemoval.length) {
+    // Note:  it's a bit abusing the interface of this method. Subject to refactor.
+    if (LOG_DELTA_REWRITE) {
+      console.log(`
+        The following subjects ned to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
+      `);
+    }
+
+    const updatedTypeCache = await buildTypeCache(
+      service_config, service_export_config, { deletes: triplesToDelete });
+    const extraTriplesToDelete = await rewriteDeletedChangeset(service_config,
+                                                               service_export_config,
+                                                               subjectsForPotentialCascadeRemoval,
+                                                               updatedTypeCache,
+                                                               true
+                                                              );
+    triplesToDelete.push(...extraTriplesToDelete);
+  }
 
   return triplesToDelete;
 }
@@ -298,6 +325,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, ch
 /**
  * Enrich the delete changeset with resources that become irrelevant for the export
  * based on the triples in the original delete changeset.
+
  * Ie. 'deeper' resources that now don't have a complete path to the export concept scheme anymore.
  * Eg. deletion of a mandatee may cause the deletion of the person resource as well.
  *
@@ -606,4 +634,20 @@ function isConfiguredForExport(triple, config) {
   } else {
     return false;
   }
+}
+
+function diffDeltas(source, target){
+  const targetHash = target.reduce((acc, curr) => {
+    acc[serializeTriple(source)] = curr;
+    return acc;
+  }, {});
+
+  const sourceHash = source.reduce((acc, curr) => {
+    acc[serializeTriple(target)] = curr;
+    return acc;
+  }, {});
+
+  const onlyInSource = source.filter(t => !targetHash(serializeTriple(t)));
+  const onlyInTarget = target.filter(t => !sourceHash(serializeTriple(t)));
+  return { onlyInSource, onlyInTarget };
 }
