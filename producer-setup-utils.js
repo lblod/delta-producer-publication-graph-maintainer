@@ -8,7 +8,7 @@ import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { storeError } from './lib/utils';
 
-export async function setupDeltaProcessorForconfig(service_config,
+export function setupDeltaProcessorForconfig(service_config,
                                                    service_export_config,
                                                    producerQueue, deltaPublisher) {
 
@@ -75,14 +75,14 @@ export async function setupDeltaProcessorForconfig(service_config,
   };
 }
 
-export async function setupDeltaFileEndpoint(deltaPublisher) {
+export function setupDeltaFileEndpoint(deltaPublisher) {
   return async function (req, res) {
       const files = await deltaPublisher.getDeltaFiles(req.query.since);
       res.json({data: files});
   };
 }
 
-export async function setupDelaLoginEndpoint(service_config) {
+export function setupDelaLoginEndpoint(service_config) {
   return async function (req, res) {
     try {
 
