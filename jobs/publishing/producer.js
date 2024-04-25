@@ -410,59 +410,90 @@ function getImpactedResources(service_config, service_export_config, changeSet, 
  * Construct the triples to be exported (inserted/deleted) for a given subject URI
  * based on the export configuration and the triples in the triplestore
  */
-async function exportResource(service_config, uri, config, graphFilterBuilder = () => configGraphFilter(service_config, config)) {
+async function exportResource(
+  service_config,
+  uri,
+  config,
+  fromPublicationGraph
+) {
+
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
-  delta.push({
-    subject: {type: 'uri', value: uri},
-    predicate: {type: 'uri', value: rdfType},
-    object: {type: 'uri', value: config.type}
-  });
-
-  let additionalFilter = '';
-
-  if (config.additionalFilter) {
-    additionalFilter = config.additionalFilter;
-  }
-
-  for (let prop of config.properties) {
-    // We skip this information because we already encoded it in the previous step
-    // And we don't want to export too much (i.e. multi-types)
-    // Note: this is a extra safety barrier
-    if (prop == rdfType && config.strictTypeExport) {
-      continue;
-    }
-
-    //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
-    const q = `
-      SELECT DISTINCT ?o WHERE {
-        GRAPH ?graph {
-          ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
-        }
-
-        ${additionalFilter ? additionalFilter : ''}
-
-        ${graphFilterBuilder()}
-      }`;
-    const result = await query(q);
-
+  // Helper function at append results from DB to delta-compliant format
+  const appendQueryResult = (result, delta, configuredPred) => {
     for (let b of result.results.bindings) {
-      const relatedUri = b['o'].value;
-      if (isInverse(prop)) {
-        delta.push({
-          subject: {type: 'uri', value: relatedUri},
-          predicate: {type: 'uri', value: normalizePredicate(prop)},
-          object: {type: 'uri', value: uri}
-        });
-      } else {
-        delta.push({
-          subject: {type: 'uri', value: uri},
-          predicate: {type: 'uri', value: normalizePredicate(prop)},
-          object: b['o']
-        });
+        const relatedUri = b['o'].value;
+        if (isInverse(configuredPred)) {
+          delta.push({
+            subject: {type: 'uri', value: relatedUri},
+            predicate: {type: 'uri', value: normalizePredicate(configuredPred)},
+            object: {type: 'uri', value: uri}
+          });
+        } else {
+          delta.push({
+            subject: {type: 'uri', value: uri},
+            predicate: {type: 'uri', value: normalizePredicate(configuredPred)},
+            object: b['o']
+          });
+        }
       }
+  };
+
+  if(fromPublicationGraph) {
+    const allProperties = [ ...config.properties, rdfType ];
+    for (let prop of allProperties) {
+      const q = `
+        SELECT DISTINCT ?object WHERE {
+          GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
+            ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(config.type)};
+              ${sparqlEscapePredicate(prop)} ?o.
+          }
+        }
+      `;
+      const result = await query(
+        q, {},
+        { sparqlEndpoint: PUBLICATION_MU_AUTH_ENDPOINT, mayRetry: true }
+      );
+      appendQueryResult(result, delta, prop);
     }
+  }
+  else {
+    delta.push({
+      subject: {type: 'uri', value: uri},
+      predicate: {type: 'uri', value: rdfType},
+      object: {type: 'uri', value: config.type}
+    });
+
+    let additionalFilter = '';
+
+    if (config.additionalFilter) {
+      additionalFilter = config.additionalFilter;
+    }
+
+    for (let prop of config.properties) {
+      // We skip this information because we already encoded it in the previous step
+      // And we don't want to export too much (i.e. multi-types)
+      // Note: this is a extra safety barrier
+      if (prop == rdfType && config.strictTypeExport) {
+        continue;
+      }
+
+      //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+      const q = `
+        SELECT DISTINCT ?o WHERE {
+          GRAPH ?graph {
+            ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
+          }
+
+          ${additionalFilter ? additionalFilter : ''}
+
+          ${generateSourceGraphFilter(service_config, config)}
+        }`;
+      const result = await query(q);
+      appendQueryResult(result, delta, prop);
+    }
+
   }
 
   return delta;
