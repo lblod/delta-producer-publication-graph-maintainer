@@ -309,7 +309,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
 
     // Note:  it's a bit abusing the interface of this method. Subject to refactor.
     const updatedTypeCache = await buildTypeCache(
-      service_config, service_export_config, { deletes: triplesToDelete });
+      service_config, service_export_config, { inserts: [], deletes: triplesToDelete });
 
     const hasCacheTypePathToConceptScheme = updatedTypeCache.map(t => t.config).some(c => c.pathToConceptScheme);
 
