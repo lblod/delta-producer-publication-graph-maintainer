@@ -103,7 +103,7 @@ export async function setupDelaLoginEndpoint(service_config) {
       }
 
       // 3. add new login to session
-      updateSudo(`
+      await updateSudo(`
       PREFIX muAccount: <http://mu.semte.ch/vocabularies/account/>
       INSERT DATA {
         GRAPH ${sparqlEscapeUri(service_config.account_graph)} {
