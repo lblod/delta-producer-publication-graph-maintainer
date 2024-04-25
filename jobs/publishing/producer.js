@@ -324,47 +324,6 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
 }
 
 /**
- * Enrich the delete changeset with resources that become irrelevant for the export
- * based on the triples in the original delete changeset.
-
- * Ie. 'deeper' resources that now don't have a complete path to the export concept scheme anymore.
- * Eg. deletion of a mandatee may cause the deletion of the person resource as well.
- *
- * The function is recursively applied to delete additional related resources
- * for the resources that have just been added to the delete changeset.
- * Eg. deletion of the person in the previous example may cause the deletion
- * of the person's birthdate as well.
- */
-async function enrichDeletedChangeset(service_config, service_export_config, changeSet, typeCache, processedResources) {
-  const impactedResources = getImpactedResources(service_config, service_export_config, changeSet, typeCache);
-
-  const triplesToDelete = [];
-  for (let {uri, config} of impactedResources) {
-    if (!processedResources.includes(uri)) {
-      processedResources.push(uri); // make sure to handle each resource only once
-      const isOutOfScope = !(await isInScopeOfConfiguration(service_config,service_export_config, uri, config));
-      if (isOutOfScope) {
-        if (LOG_DELTA_REWRITE)
-          console.log(`Enriching delete changeset with export of resource <${uri}>.`);
-        const resourceExport = await exportResource(service_config, uri, config);
-        triplesToDelete.push(...resourceExport);
-
-        if (LOG_DELTA_REWRITE)
-          console.log(`Recursively checking for enrichments based on the newly deleted triples for resource <${uri}>.`);
-        const recursiveTypeCache = await buildTypeCache(service_config, service_export_config, {inserts: [], deletes: resourceExport});
-        const recursiveTriples = await enrichDeletedChangeset(service_config, service_export_config, resourceExport, recursiveTypeCache, processedResources);
-        triplesToDelete.push(...recursiveTriples);
-      }
-    } else {
-      if (LOG_DELTA_REWRITE)
-        console.log(`Resource <${uri}> already removed from export for given config. Ignoring now.`);
-    }
-  }
-
-  return triplesToDelete;
-}
-
-/**
  * Get all possibly impacted resources by a changeset of triples. Impacted resources are subject/objects
  * of the triples in the changeSet for which a relation (predicate) has been inserted/deleted, that may
  * cause the resource to be included/excluded from the export.
