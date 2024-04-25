@@ -250,8 +250,9 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
  * @param {Object} service_export_config - Export configuration of the resources to export themselves.
  * @param {Array<string>} subjectUris - URIs of the subjects that are potentially affected by the changeset deletions.
  * @param {Array<Object>} typeCache - A cache of type configurations, each containing URIs and their respective export settings.
- * @param {boolean} [recursivelyCalled=false] - Indicates whether this function is being called recursively to handle cascading deletions.
- *                                              -  That's mereley for logging purposes...
+ * @param {boolean} [recursivelyCalled=false]
+ *  - Indicates whether this function is being called recursively to handle cascading deletions.
+ *  -  Only used to clarify the logs...
  *
  * @returns {Promise<Array<Object>>} The list of triples marked for delete.
  *
@@ -272,6 +273,7 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
         const publishedData = await exportResource(service_config, subjectUri, config, true);
 
         allSourceData.push(...sourceData);
+
         allPublishedData.push(...publishedData);
       }
     }
@@ -432,7 +434,7 @@ async function exportResource(
     const allProperties = [ ...config.properties, rdfType ];
     for (let prop of allProperties) {
       const q = `
-        SELECT DISTINCT ?object WHERE {
+        SELECT DISTINCT ?o WHERE {
           GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
             ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(config.type)};
               ${sparqlEscapePredicate(prop)} ?o.
@@ -598,16 +600,16 @@ function isConfiguredForExport(triple, config) {
 
 function diffDeltas(source, target){
   const targetHash = target.reduce((acc, curr) => {
-    acc[serializeTriple(source)] = curr;
+    acc[serializeTriple(curr)] = curr;
     return acc;
   }, {});
 
   const sourceHash = source.reduce((acc, curr) => {
-    acc[serializeTriple(target)] = curr;
+    acc[serializeTriple(curr)] = curr;
     return acc;
   }, {});
 
-  const onlyInSource = source.filter(t => !targetHash(serializeTriple(t)));
-  const onlyInTarget = target.filter(t => !sourceHash(serializeTriple(t)));
+  const onlyInSource = source.filter(t => !targetHash[serializeTriple(t)]);
+  const onlyInTarget = target.filter(t => !sourceHash[serializeTriple(t)]);
   return { onlyInSource, onlyInTarget };
 }
