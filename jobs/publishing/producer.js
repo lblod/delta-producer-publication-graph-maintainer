@@ -259,7 +259,7 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
  */
 async function rewriteDeletedChangeset(service_config, service_export_config, subjectUris, typeCache, recursivelyCalled = false) {
   const triplesToDelete = [];
-  const subjectsForPotentialCascadeRemoval = [];
+  let subjectsForPotentialCascadeRemoval = [];
 
   for (let subjectUri of subjectUris) {
     const allSourceData = [];
@@ -293,35 +293,48 @@ async function rewriteDeletedChangeset(service_config, service_export_config, su
     subjectsForPotentialCascadeRemoval.push(...inverseRelations);
   }
 
-  if (LOG_DELTA_REWRITE) {
-    if(recursivelyCalled) {
-      console.log(`Calculating triples to be potentially removed in cascade.`);
-    }
-    console.log(`
-      The following subjects were marked as deletion: ${subjectUris.join('\n')}.
-      Resulted in triples marked as delete in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
-    `);
+
+  // Some log statements
+  if(recursivelyCalled) {
+    console.log(`Calculating triples to be potentially removed in cascade.`);
   }
+  console.log(`
+    The following subjects were marked as deletion: ${subjectUris.join('\n')}.
+    Resulted in triples marked as delete in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
+  `);
+
 
   if(subjectsForPotentialCascadeRemoval.length) {
+    subjectsForPotentialCascadeRemoval = [ ...new Set(subjectsForPotentialCascadeRemoval) ];
+
     // Note:  it's a bit abusing the interface of this method. Subject to refactor.
-    if (LOG_DELTA_REWRITE) {
     const updatedTypeCache = await buildTypeCache(
       service_config, service_export_config, { deletes: triplesToDelete });
 
     const hasCacheTypePathToConceptScheme = updatedTypeCache.map(t => t.config).some(c => c.pathToConceptScheme);
+
+    if(!hasCacheTypePathToConceptScheme) {
+      console.log(`
+        From the subjects to delete and their relations,
+         no 'pathToConceptScheme' was found in the config.
+        No cascade delete needs to be calculated.
+     `);
+    }
+    else {
       console.log(`
         The following subjects need to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
       `);
+      const extraTriplesToDelete = await rewriteDeletedChangeset(service_config,
+                                                                 service_export_config,
+                                                                 subjectsForPotentialCascadeRemoval,
+                                                                 updatedTypeCache,
+                                                                 true
+                                                                );
+      triplesToDelete.push(...extraTriplesToDelete);
     }
-
-    const extraTriplesToDelete = await rewriteDeletedChangeset(service_config,
-                                                               service_export_config,
-                                                               subjectsForPotentialCascadeRemoval,
-                                                               updatedTypeCache,
-                                                               true
-                                                              );
-    triplesToDelete.push(...extraTriplesToDelete);
+  }
+  else {
+    console.log(`No relations need to be assessed for further deletion.`);
   }
 
   return triplesToDelete;
