@@ -68,11 +68,15 @@ app.post("/delta", async function(req, res) {
   }
   catch (error) {
     console.error(error);
-    await storeDispatchingError(services, error);
+    storeDispatchingError(services, error);
     res.status(500).send();
   }
 });
 
+
+/*****************************************************
+ * HELPERS
+ *****************************************************/
 async function extractTypesFromDelta(delta) {
   let allTypes = [];
   let allUris = [];
@@ -142,36 +146,65 @@ async function dispatchRequest(req, res, allTypes) {
   };
 }
 
+let timerId;
 async function storeDispatchingError(servicesConfig, errorMsg) {
-  const id = uuid();
-  const uri = ERROR_URI_PREFIX + id;
 
-  const fullErrorMsg = `
-    A general error occured during the dispatching of a delta to delta producer stream.".
-    Error Message: ${errorMsg}.
-  `;
   const creationTS = new Date().toISOString();
 
-  for (const name in services){
-    let service = services[name];
-    const service_config = new Config(service, name);
+  const storeError = async function () {
+    try {
+      const id = uuid();
+      const uri = ERROR_URI_PREFIX + id;
 
-    const queryError = `
-      ${PREFIXES}
+      const fullErrorMsg = `
+        A general error occured during the dispatching of a delta to delta producer stream.".
+        Error Message: ${errorMsg}.
+      `;
 
-      INSERT DATA {
-        GRAPH ${sparqlEscapeUri(service_config.jobsGraph)}{
-          ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(ERROR_TYPE)}, ${sparqlEscapeUri(DELTA_ERROR_TYPE)};
-            mu:uuid ${sparqlEscapeString(id)};
-            dct:subject "Delta Producer Publication Graph Maintainer" ;
-            oslc:message ${sparqlEscapeString(fullErrorMsg)};
-            dct:created ${sparqlEscapeDateTime(creationTS)} ;
-            dct:creator ${sparqlEscapeUri(service_config.errorCreatorUri)} .
-        }
+      //TODO: a lot of complication arises from the way we can configure different streams
+      let graphs = [];
+      const creators = [];
+      for (const name in services){
+        let service = services[name];
+        const service_config = new Config(service, name);
+        graphs.push(`${sparqlEscapeUri(service_config.jobsGraph)}`);
+        creators.push(`dct:creator ${sparqlEscapeUri(service_config.errorCreatorUri)};`);
       }
-    `;
-     await updateSudo(queryError);
-  }
+
+      graphs = [...new Set(graphs)];
+      const partialInsertBlocks  = graphs.map(g => `
+            GRAPH ${g} {
+             ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(ERROR_TYPE)}, ${sparqlEscapeUri(DELTA_ERROR_TYPE)}.
+            }
+      `);
+
+      const queryError = `
+          ${PREFIXES}
+
+          INSERT DATA {
+            GRAPH ${graphs[0]} {
+              ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(ERROR_TYPE)}, ${sparqlEscapeUri(DELTA_ERROR_TYPE)};
+                mu:uuid ${sparqlEscapeString(id)};
+                dct:subject "Delta Producer Publication Graph Maintainer" ;
+                oslc:message ${sparqlEscapeString(fullErrorMsg)};
+                ${[...new Set(creators)].join('\n')}
+                dct:created ${sparqlEscapeDateTime(creationTS)}.
+            }
+            ${partialInsertBlocks.join('\n')}
+          }
+
+        `;
+      await updateSudo(queryError);
+    }
+    catch (error) {
+      console.error('Error storing error...');
+      console.error(error);
+    }
+  };
+
+  // Debounce 10 s
+  clearTimeout(timerId);
+  timerId = setTimeout(storeError, 10000);
 }
 
 app.use(errorHandler);
