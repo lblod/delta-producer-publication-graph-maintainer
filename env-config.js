@@ -31,7 +31,7 @@ export const PREFIXES = `
     `;
 
 export class Config {
-  constructor(configData, name) {
+  constructor(configData, name, loadedOnInit = true) {
     this.name = name;
     this.exportConfigPath = configData.exportConfigPath;
     this.publisherUri = configData.publisherUri;
@@ -111,7 +111,7 @@ export class Config {
     /*
      * PATHS
      */
-    if (configData.deltaPath) {
+    if (configData.deltaPath && loadedOnInit) {
       console.log(
         `INFO: "deltaPath": ${configData.deltaPath} was provided,
            but this isn't required anymore, all incoming deltas may also be submitted to

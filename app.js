@@ -166,7 +166,7 @@ async function storeDispatchingError(servicesConfig, errorMsg) {
       const creators = [];
       for (const name in services){
         let service = services[name];
-        const service_config = new Config(service, name);
+        const service_config = new Config(service, name, false);
         graphs.push(`${sparqlEscapeUri(service_config.jobsGraph)}`);
         creators.push(`dct:creator ${sparqlEscapeUri(service_config.errorCreatorUri)};`);
       }
