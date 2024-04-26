@@ -286,9 +286,6 @@ Reason for this: current implementation makes it very difficult to exclude the p
 * Add support for a prefix map in the export configuration
 * A couple of cases are not supported when producing mini deltas
   - multi typing of subjects need further elaboration
-  - incoming deltas are not checked for graph, this might lead for weird behaviour (corrected by the healing process though).
-  - Deletion of triples and related resources doesn't work, but more importantly needs further thinking.
-    - In some cases we might produce conflicting information, e.g a person both being a mandataris and leidinggevenden.
 ## Experimental features
 ### Support for publication graph residing in another triplestore
 If publication graphs affect performance of the database too much, you can choose to store this information in another database.
