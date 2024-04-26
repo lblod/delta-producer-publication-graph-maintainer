@@ -106,9 +106,15 @@ export class Config {
     /*
      * PATHS
      */
-    if (!configData.deltaPath)
-        throw `Expected 'deltaPath' should be provided.`;
-    this.deltaPath = configData.deltaPath;
+    if (configData.deltaPath) {
+      console.log(
+        `INFO: "deltaPath": ${configData.deltaPath} was provided,
+           but this isn't required anymore, all incoming deltas may also be submitted to
+           the "/delta" endpoint.
+           This should have bettter performance when the service has multiple delta streams to manage.
+      `);
+      this.deltaPath = configData.deltaPath;
+    }
     if (!configData.filesPath)
         throw `Expected 'filesPath' should be provided.`;
     this.filesPath = configData.filesPath;

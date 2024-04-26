@@ -43,7 +43,9 @@ for (const name in services){
 
   configuredTypesPerHandler[name] = { handler: deltaProcessor, configuredTypes };
 
-  app.post(service_config.deltaPath, deltaProcessor);
+  if(service_config.deltaPath) {
+    app.post(service_config.deltaPath, deltaProcessor);
+  }
 
   if (service_config.serveDeltaFiles) {
     //This endpoint only makes sense if serveDeltaFiles is set to true;
