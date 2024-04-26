@@ -97,10 +97,27 @@ async function extractTypesFromDelta(delta) {
   allUris = [ ... new Set(allUris) ];
   console.log(`Found ${allUris.length} in delta, checking store for rdf:type`);
 
-  for (let uri of allUris) {
+  // Some speed optimisation, if long querystring, mu-auth is slower and ask one by one
+  if(allUris.length > 20 ) {
+    for (let uri of allUris) {
+      const result = await querySudo(`
+        SELECT DISTINCT ?type WHERE {
+            ${sparqlEscapeUri(uri)} a ?type.
+        }
+      `);
+      const typesFromStore = result.results.bindings.map(b => b['type'].value);
+      allTypes.push(...typesFromStore);
+    }
+  }
+  else {
     const result = await querySudo(`
       SELECT DISTINCT ?type WHERE {
-          ${sparqlEscapeUri(uri)} a ?type.
+          VALUES ?subject {
+             ${allUris
+               .map(uri => sparqlEscapeUri(uri))
+               .join('\n')}
+          }
+          ?subject a ?type.
       }
     `);
     const typesFromStore = result.results.bindings.map(b => b['type'].value);
