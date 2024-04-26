@@ -1,8 +1,10 @@
 import { updateSudo, querySudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
-import { app, errorHandler, sparqlEscapeUri, uuid } from 'mu';
+import { app, errorHandler, sparqlEscapeUri, uuid,
+         sparqlEscapeString, sparqlEscapeDateTime} from 'mu';
 import {
-  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA
+  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA,
+  DELTA_ERROR_TYPE, ERROR_TYPE, PREFIXES, ERROR_URI_PREFIX
 } from './env-config';
 import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
@@ -59,19 +61,28 @@ for (const name in services){
 }
 
 app.post("/delta", async function(req, res) {
-  const delta = req.body;
-  const allTypes = await extractTypesFromDelta(delta);
-  await dispatchRequest(req, res, allTypes);
+  try {
+    const delta = req.body;
+    const allTypes = await extractTypesFromDelta(delta);
+    await dispatchRequest(req, res, allTypes);
+  }
+  catch (error) {
+    console.error(error);
+    await storeDispatchingError(services, error);
+    res.status(500).send();
+  }
 });
 
 async function extractTypesFromDelta(delta) {
   let allTypes = [];
   let allUris = [];
 
+  // TODO: this is very similar logic as in -buildTypeCache-.
+
+  // First get types from delta
   for (let changeSet of delta) {
     const triples = [...changeSet.inserts, ...changeSet.deletes];
 
-    // First get types from delta
     const typesFromChangeset = triples
           .filter(t => t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
           .map(t => t.object.value);
@@ -82,7 +93,7 @@ async function extractTypesFromDelta(delta) {
     allUris.push(...triples.filter(t => t.object.type == 'uri').map(t => t.object.value));
   }
 
-  // from store
+  // Then add types from store
   allUris = [ ... new Set(allUris) ];
   console.log(`Found ${allUris.length} in delta, checking store for rdf:type`);
 
@@ -100,23 +111,56 @@ async function extractTypesFromDelta(delta) {
 }
 
 async function dispatchRequest(req, res, allTypes) {
+  // TODO: note; probs the dispatching can even be made more efficient, but would required bigger refactor.
   for(const streamName of Object.keys(configuredTypesPerHandler)) {
     const configuredTypes = configuredTypesPerHandler[streamName].configuredTypes;
     const handler = configuredTypesPerHandler[streamName].handler;
     if(configuredTypes.some(confType => allTypes.some(allType => confType == allType))) {
       console.log(`
-        Delta stream: ${streamName} --WILL-- process a delta containing the following types:
+        Delta producer stream: ${streamName} --WILL-- process a delta containing the following types:
         ${allTypes.join('\n')}
       `);
       handler(req, res);
     }
     else {
       console.log(`
-        Delta stream: ${streamName} will >>>WILL NOT<<< process a delta containing the following types:
+        Delta producer stream: ${streamName} will >>>WILL NOT<<< process a delta containing the following types:
          ${allTypes.join('\n')}
       `);
     }
   };
+}
+
+async function storeDispatchingError(servicesConfig, errorMsg) {
+  const id = uuid();
+  const uri = ERROR_URI_PREFIX + id;
+
+  const fullErrorMsg = `
+    A general error occured during the dispatching of a delta to delta producer stream.".
+    Error Message: ${errorMsg}.
+  `;
+  const creationTS = new Date().toISOString();
+
+  for (const name in services){
+    let service = services[name];
+    const service_config = new Config(service, name);
+
+    const queryError = `
+      ${PREFIXES}
+
+      INSERT DATA {
+        GRAPH ${sparqlEscapeUri(service_config.jobsGraph)}{
+          ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(ERROR_TYPE)}, ${sparqlEscapeUri(DELTA_ERROR_TYPE)};
+            mu:uuid ${sparqlEscapeString(id)};
+            dct:subject "Delta Producer Publication Graph Maintainer" ;
+            oslc:message ${sparqlEscapeString(fullErrorMsg)};
+            dct:created ${sparqlEscapeDateTime(creationTS)} ;
+            dct:creator ${sparqlEscapeUri(service_config.errorCreatorUri)} .
+        }
+      }
+    `;
+     await updateSudo(queryError);
+  }
 }
 
 app.use(errorHandler);

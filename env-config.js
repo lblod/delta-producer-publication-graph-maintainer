@@ -12,13 +12,11 @@ export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_
 export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE) || 10;
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
 
-export class Config {
-  constructor(configData, name) {
-    this.name = name;
-    this.exportConfigPath = configData.exportConfigPath;
-    this.publisherUri = configData.publisherUri;
-    //TODO: why here?
-    this.prefixes = `
+export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
+export const ERROR_TYPE = 'http://open-services.net/ns/core#Error';
+export const ERROR_URI_PREFIX = 'http://redpencil.data.gift/id/publication-maintenance/error/';
+
+export const PREFIXES = `
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
       PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
       PREFIX dct: <http://purl.org/dc/terms/>
@@ -31,7 +29,14 @@ export class Config {
       PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
       PREFIX dbpedia: <http://dbpedia.org/resource/>
     `;
-    this.errorUriPrefix = 'http://redpencil.data.gift/id/publication-maintenance/error/';
+
+export class Config {
+  constructor(configData, name) {
+    this.name = name;
+    this.exportConfigPath = configData.exportConfigPath;
+    this.publisherUri = configData.publisherUri;
+    this.prefixes = PREFIXES; // TODO: get rid of these constants here
+    this.errorUriPrefix = ERROR_URI_PREFIX;  // TODO: get rid of these constants here
     this.jobsGraph = configData.jobsGraph || 'http://mu.semte.ch/graphs/system/jobs';
     this.jobType = 'http://vocab.deri.ie/cogs#Job';
     this.taskType = 'http://redpencil.data.gift/vocabularies/tasks/Task';
@@ -40,8 +45,8 @@ export class Config {
     this.statusSuccess = 'http://redpencil.data.gift/id/concept/JobStatus/success';
     this.statusFailed = 'http://redpencil.data.gift/id/concept/JobStatus/failed';
     this.statusCanceled = 'http://redpencil.data.gift/id/concept/JobStatus/canceled';
-    this.errorType = 'http://open-services.net/ns/core#Error';
-    this.deltaErrorType = 'http://redpencil.data.gift/vocabularies/deltas/Error';
+    this.errorType = ERROR_TYPE; // TODO: get rid of these constants here.
+    this.deltaErrorType = DELTA_ERROR_TYPE; // TODO: get rid of these constants here.
     this.errorCreatorUri = configData.errorCreatorUri || 'http://lblod.data.gift/services/delta-producer-publication-graph-maintainer';
 
     //task operation of interest
