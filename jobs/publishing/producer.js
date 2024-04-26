@@ -8,7 +8,10 @@ import {
   serializeTriple,
   isSamePath
 } from '../../lib/utils';
-import {LOG_DELTA_REWRITE} from "../../env-config";
+import {
+  LOG_DELTA_REWRITE,
+  PUBLICATION_MU_AUTH_ENDPOINT
+} from "../../env-config";
 
 // TODO add support for a prefix map in the export configuration
 //      preprocess the imported config by resolving all prefixed URIs with full URIs
@@ -31,7 +34,8 @@ export async function produceDelta(service_config, service_export_config, delta)
 
     if (LOG_DELTA_REWRITE)
       console.log(`Rewriting deleted changeSet containing ${changeSet.deletes.length} triples`);
-    const deletes = await rewriteDeletedChangeset(service_config, service_export_config, changeSet.deletes, typeCache);
+    const deletedSubjects = changeSet.deletes.map(t => t.subject.value);
+    const deletes = await rewriteDeletedChangeset(service_config, service_export_config, deletedSubjects, typeCache);
     updatedChangeSet.deletes.push(...deletes);
 
     if (updatedChangeSet.inserts.length || updatedChangeSet.deletes.length)
@@ -77,18 +81,30 @@ async function buildTypeCache(service_config, service_export_config, changeSet) 
     console.log(`Building type cache for ${uris.length} URIs based on types found in the store and the changeset.`);
 
   for (let uri of uris) {
-    const result = await query(`
+    const resultFromSourceStore = await query(`
       SELECT DISTINCT ?type WHERE {
         GRAPH ?g {
           ${sparqlEscapeUri(uri)} a ?type.
         }
       }
     `);
-    const typesFromStore = result.results.bindings.map(b => b['type'].value);
+    const typesFromStore = resultFromSourceStore.results.bindings.map(b => b['type'].value);
+
+    const resultFromPublicationStore = await query(`
+      SELECT DISTINCT ?type WHERE {
+        GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
+          ${sparqlEscapeUri(uri)} a ?type.
+        }
+      }
+    `, {}, { sparqlEndpoint: PUBLICATION_MU_AUTH_ENDPOINT, mayRetry: true });
+    const typesFromPublicationStore = resultFromPublicationStore.results.bindings.map(b => b['type'].value);
+
     const typesFromChangeset = triples.filter(
         t => t.subject.value == uri && t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
-                                      .map(t => t.object.value);
-    const types = uniq([...typesFromStore, ...typesFromChangeset]);
+          .map(t => t.object.value);
+
+
+    const types = uniq([...typesFromStore, ...typesFromChangeset, ...typesFromPublicationStore]);
     if (LOG_DELTA_REWRITE)
       console.log(`Found ${types.length} distinct types for URI <${uri}>.`);
 
@@ -222,102 +238,104 @@ async function enrichInsertedChangeset(service_config, service_export_config, ch
 }
 
 /**
- * Rewrite the received triples to delete to a delete changeset relevant for the export of conceptSchemes.
+ * Calculates the triples to delete from the publication graph.
+ * Based on the configuration, it calculates the diffs between what is published and what should be removed.
+ * There is an extra complication, when working with conceptScheme based configurations.
+ * Then it should calculate a potential 'CASCADE DELETE', based on the conceptscheme.
  *
- * Deletion of 1 triple may lead to a bunch of resources to be deleted,
- * because the deleted triple breaks the path to the export concept scheme.
+ * For instance, deleting a triple relating to a mandaat:Mandataris might also require deleting the associated person,
+ * unless that person is linked to another mandaat:Mandataris.
  *
- * E.g. Deletion of a mandatee may cause the deletion of the person as well,
- *       unless the person is still related to another mandatee.
+ * @param {Object} service_config - Configuration object for the service containing the config for the specific delta stream.
+ * @param {Object} service_export_config - Export configuration of the resources to export themselves.
+ * @param {Array<string>} subjectUris - URIs of the subjects that are potentially affected by the changeset deletions.
+ * @param {Array<Object>} typeCache - A cache of type configurations, each containing URIs and their respective export settings.
+ * @param {boolean} [recursivelyCalled=false]
+ *  - Indicates whether this function is being called recursively to handle cascading deletions.
+ *  -  Only used to clarify the logs...
  *
- * Note: additional triples to delete are computed only based on the data that is still
- * in the store. Other triples that need to be deleted, that are not in the store anymore,
- * will arrive in (different) delta changesets.
+ * @returns {Promise<Array<Object>>} The list of triples marked for delete.
+ *
  */
-async function rewriteDeletedChangeset(service_config, service_export_config, changeSet, typeCache) {
+async function rewriteDeletedChangeset(service_config, service_export_config, subjectUris, typeCache, recursivelyCalled = false) {
   const triplesToDelete = [];
-  const processedResources = []; // tmp cache of recursively added resources
+  let subjectsForPotentialCascadeRemoval = [];
 
-  // For each triple of the changeset, check if it is relevant for the export.
-  // Ie. the subject doesn't have any path to the export concept-scheme and the predicate is configured to be exported
-  // There is an implicit assumption that a resource only has 1 kind-of path to the export CS (but there may be multiple instances of this path)
-  for (let triple of changeSet) {
-    const uri = triple.subject.value;
-    const exportConfigurations = typeCache.filter(e => e.uri === uri).map(e => e.config);
+  for (let subjectUri of [ ...new Set(subjectUris) ]) {
+    const allSourceData = [];
+    const allPublishedData = [];
+
+    const exportConfigurations = typeCache.filter(e => e.uri === subjectUri).map(e => e.config);
+
     if (exportConfigurations.length) {
       for (let config of exportConfigurations) {
-        const predicate = triple.predicate.value;
-        const isOutOfScope = !(await isInScopeOfConfiguration(service_config, service_export_config, uri, config));
-        // We don't check if the resource has already been processed,
-        // different configuration could contain different predicates
-        if (isOutOfScope) {
-          processedResources.push(uri);
-          if (LOG_DELTA_REWRITE)
-            console.log(`Additional Filters found, enriching delete changeset with export of resource <${uri}>.`);
-          // If the resource is out-of-scope/to-be-deleted, we need to get the full resource from the publication graph.
-          const resourceExport = await exportResource(service_config, uri, config, () => publicationGraphFilter(service_config));
-          triplesToDelete.push(...resourceExport);
-        } else if (isConfiguredForExport(triple, config)) {
-          if (LOG_DELTA_REWRITE)
-            console.log(`Triple ${serializeTriple(triple)} copied to delete changeset for export.`);
-          triplesToDelete.push(triple);
-        } else if (config.LOG_DELTA_REWRITE) {
-          console.log(`Predicate <${predicate}> not configured for export for type <${config.type}>.`);
-        }
-        if (LOG_DELTA_REWRITE)
-          console.log(`Triple ${serializeTriple(triple)} not relevant for export and will be ignored.`);
+        const sourceData = await exportResource(service_config, subjectUri, config);
+        const publishedData = await exportResource(service_config, subjectUri, config, true);
+
+        allSourceData.push(...sourceData);
+
+        allPublishedData.push(...publishedData);
       }
-    } else if (LOG_DELTA_REWRITE) {
-      console.log(
-          `Triple ${serializeTriple(triple)} has a rdf:type that is not configured for export and will be ignored.`);
     }
+
+    const dataToRemove = diffDeltas(allSourceData, allPublishedData).onlyInTarget;
+    triplesToDelete.push(...dataToRemove);
+
+    // Determine if additional subjects should be removed based on the removal logic outlined in the documentation.
+    const normalRelations = dataToRemove
+          .filter(t => t.subject.value == subjectUri && t.object.type == 'uri')
+          .map(t => t.object.value);
+    subjectsForPotentialCascadeRemoval.push(...normalRelations);
+
+    const inverseRelations = dataToRemove
+          .filter(t => t.subject.value != subjectUri)
+          .map(t => t.subject.value);
+    subjectsForPotentialCascadeRemoval.push(...inverseRelations);
   }
 
-  const enrichments = await enrichDeletedChangeset(service_config, service_export_config, changeSet, typeCache, processedResources);
-  if (LOG_DELTA_REWRITE) {
-    console.log(`Checked ${processedResources.length} additional resources to delete.`);
-    console.log(`Adding ${enrichments.length} triples to delete to the changeset.`);
+
+  // Some log statements
+  if(recursivelyCalled) {
+    console.log(`Calculating triples to be potentially removed in cascade.`);
   }
-  triplesToDelete.push(...enrichments);
+  console.log(`
+    The following subjects were marked as deletion: ${subjectUris.join('\n')}.
+    Resulted in triples marked as delete ${triplesToDelete.length}
+    in the publicationGraph: ${triplesToDelete.map(t => serializeTriple(t)).join('\n')}.
+  `);
 
-  return triplesToDelete;
-}
 
-/**
- * Enrich the delete changeset with resources that become irrelevant for the export
- * based on the triples in the original delete changeset.
- * Ie. 'deeper' resources that now don't have a complete path to the export concept scheme anymore.
- * Eg. deletion of a mandatee may cause the deletion of the person resource as well.
- *
- * The function is recursively applied to delete additional related resources
- * for the resources that have just been added to the delete changeset.
- * Eg. deletion of the person in the previous example may cause the deletion
- * of the person's birthdate as well.
- */
-async function enrichDeletedChangeset(service_config, service_export_config, changeSet, typeCache, processedResources) {
-  const impactedResources = getImpactedResources(service_config, service_export_config, changeSet, typeCache);
+  if(subjectsForPotentialCascadeRemoval.length) {
+    subjectsForPotentialCascadeRemoval = [ ...new Set(subjectsForPotentialCascadeRemoval) ];
 
-  const triplesToDelete = [];
-  for (let {uri, config} of impactedResources) {
-    if (!processedResources.includes(uri)) {
-      processedResources.push(uri); // make sure to handle each resource only once
-      const isOutOfScope = !(await isInScopeOfConfiguration(service_config,service_export_config, uri, config));
-      if (isOutOfScope) {
-        if (LOG_DELTA_REWRITE)
-          console.log(`Enriching delete changeset with export of resource <${uri}>.`);
-        const resourceExport = await exportResource(service_config, uri, config);
-        triplesToDelete.push(...resourceExport);
+    // Note:  it's a bit abusing the interface of this method. Subject to refactor.
+    const updatedTypeCache = await buildTypeCache(
+      service_config, service_export_config, { inserts: [], deletes: triplesToDelete });
 
-        if (LOG_DELTA_REWRITE)
-          console.log(`Recursively checking for enrichments based on the newly deleted triples for resource <${uri}>.`);
-        const recursiveTypeCache = await buildTypeCache(service_config, service_export_config, {inserts: [], deletes: resourceExport});
-        const recursiveTriples = await enrichDeletedChangeset(service_config, service_export_config, resourceExport, recursiveTypeCache, processedResources);
-        triplesToDelete.push(...recursiveTriples);
-      }
-    } else {
-      if (LOG_DELTA_REWRITE)
-        console.log(`Resource <${uri}> already removed from export for given config. Ignoring now.`);
+    const hasCacheTypePathToConceptScheme = updatedTypeCache.map(t => t.config).some(c => c.pathToConceptScheme);
+
+    if(!hasCacheTypePathToConceptScheme) {
+      console.log(`
+        From the subjects to delete and their relations,
+         no 'pathToConceptScheme' was found in the config.
+        No cascade delete needs to be calculated.
+     `);
     }
+    else {
+      console.log(`
+        The following subjects need to be explored for cascade removal: ${subjectsForPotentialCascadeRemoval.join('\n')}.
+      `);
+      const extraTriplesToDelete = await rewriteDeletedChangeset(service_config,
+                                                                 service_export_config,
+                                                                 subjectsForPotentialCascadeRemoval,
+                                                                 updatedTypeCache,
+                                                                 true
+                                                                );
+      triplesToDelete.push(...extraTriplesToDelete);
+    }
+  }
+  else {
+    console.log(`No relations need to be assessed for further deletion.`);
   }
 
   return triplesToDelete;
@@ -398,59 +416,90 @@ function getImpactedResources(service_config, service_export_config, changeSet, 
  * Construct the triples to be exported (inserted/deleted) for a given subject URI
  * based on the export configuration and the triples in the triplestore
  */
-async function exportResource(service_config, uri, config, graphFilterBuilder = () => configGraphFilter(service_config, config)) {
+async function exportResource(
+  service_config,
+  uri,
+  config,
+  fromPublicationGraph
+) {
+
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
-  delta.push({
-    subject: {type: 'uri', value: uri},
-    predicate: {type: 'uri', value: rdfType},
-    object: {type: 'uri', value: config.type}
-  });
-
-  let additionalFilter = '';
-
-  if (config.additionalFilter) {
-    additionalFilter = config.additionalFilter;
-  }
-
-  for (let prop of config.properties) {
-    // We skip this information because we already encoded it in the previous step
-    // And we don't want to export too much (i.e. multi-types)
-    // Note: this is a extra safety barrier
-    if (prop == rdfType && config.strictTypeExport) {
-      continue;
-    }
-
-    //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
-    const q = `
-      SELECT DISTINCT ?o WHERE {
-        GRAPH ?graph {
-          ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
-        }
-
-        ${additionalFilter ? additionalFilter : ''}
-
-        ${graphFilterBuilder()}
-      }`;
-    const result = await query(q);
-
+  // Helper function at append results from DB to delta-compliant format
+  const appendQueryResult = (result, delta, configuredPred) => {
     for (let b of result.results.bindings) {
-      const relatedUri = b['o'].value;
-      if (isInverse(prop)) {
-        delta.push({
-          subject: {type: 'uri', value: relatedUri},
-          predicate: {type: 'uri', value: normalizePredicate(prop)},
-          object: {type: 'uri', value: uri}
-        });
-      } else {
-        delta.push({
-          subject: {type: 'uri', value: uri},
-          predicate: {type: 'uri', value: normalizePredicate(prop)},
-          object: b['o']
-        });
+        const relatedUri = b['o'].value;
+        if (isInverse(configuredPred)) {
+          delta.push({
+            subject: {type: 'uri', value: relatedUri},
+            predicate: {type: 'uri', value: normalizePredicate(configuredPred)},
+            object: {type: 'uri', value: uri}
+          });
+        } else {
+          delta.push({
+            subject: {type: 'uri', value: uri},
+            predicate: {type: 'uri', value: normalizePredicate(configuredPred)},
+            object: b['o']
+          });
+        }
       }
+  };
+
+  if(fromPublicationGraph) {
+    const allProperties = [ ...config.properties, rdfType ];
+    for (let prop of allProperties) {
+      const q = `
+        SELECT DISTINCT ?o WHERE {
+          GRAPH ${sparqlEscapeUri(service_config.publicationGraph)} {
+            ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(config.type)};
+              ${sparqlEscapePredicate(prop)} ?o.
+          }
+        }
+      `;
+      const result = await query(
+        q, {},
+        { sparqlEndpoint: PUBLICATION_MU_AUTH_ENDPOINT, mayRetry: true }
+      );
+      appendQueryResult(result, delta, prop);
     }
+  }
+  else {
+    delta.push({
+      subject: {type: 'uri', value: uri},
+      predicate: {type: 'uri', value: rdfType},
+      object: {type: 'uri', value: config.type}
+    });
+
+    let additionalFilter = '';
+
+    if (config.additionalFilter) {
+      additionalFilter = config.additionalFilter;
+    }
+
+    for (let prop of config.properties) {
+      // We skip this information because we already encoded it in the previous step
+      // And we don't want to export too much (i.e. multi-types)
+      // Note: this is a extra safety barrier
+      if (prop == rdfType && config.strictTypeExport) {
+        continue;
+      }
+
+      //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+      const q = `
+        SELECT DISTINCT ?o WHERE {
+          GRAPH ?graph {
+            ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
+          }
+
+          ${additionalFilter ? additionalFilter : ''}
+
+          ${generateSourceGraphFilter(service_config, config)}
+        }`;
+      const result = await query(q);
+      appendQueryResult(result, delta, prop);
+    }
+
   }
 
   return delta;
@@ -476,7 +525,10 @@ function getChildConfigurations(service_export_config, config) {
  * Note 2:
  *    by default the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
  */
-async function isInScopeOfConfiguration(service_config, service_export_config, subject, config, graphFilterBuilder = () => configGraphFilter(service_config, config)) {
+async function isInScopeOfConfiguration(service_config,
+                                        service_export_config,
+                                        subject, config,
+                                        graphFilterBuilder = () => generateSourceGraphFilter(service_config, config)) {
 
   let additionalFilter = '';
 
@@ -517,7 +569,7 @@ async function isInScopeOfConfiguration(service_config, service_export_config, s
   return result.results.bindings.length;
 }
 
-function configGraphFilter(service_config, config) {
+function generateSourceGraphFilter(service_config, config) {
 
   const { additionalFilter,
           pathToConceptScheme,
@@ -548,10 +600,6 @@ function configGraphFilter(service_config, config) {
   return graphsFilterStr;
 }
 
-function publicationGraphFilter(service_config) {
-  return `FILTER ( regex(str(?graph), ${sparqlEscapeString(service_config.publicationGraph)}) )`;
-}
-
 function isConfiguredForExport(triple, config) {
   const predicate = triple.predicate.value;
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -564,4 +612,20 @@ function isConfiguredForExport(triple, config) {
   } else {
     return false;
   }
+}
+
+function diffDeltas(source, target){
+  const targetHash = target.reduce((acc, curr) => {
+    acc[serializeTriple(curr)] = curr;
+    return acc;
+  }, {});
+
+  const sourceHash = source.reduce((acc, curr) => {
+    acc[serializeTriple(curr)] = curr;
+    return acc;
+  }, {});
+
+  const onlyInSource = source.filter(t => !targetHash[serializeTriple(t)]);
+  const onlyInTarget = target.filter(t => !sourceHash[serializeTriple(t)]);
+  return { onlyInSource, onlyInTarget };
 }
