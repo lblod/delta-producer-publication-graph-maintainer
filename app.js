@@ -122,12 +122,6 @@ async function dispatchRequest(req, res, allTypes) {
       `);
       handler(req, res);
     }
-    else {
-      console.log(`
-        Delta producer stream: ${streamName} will >>>WILL NOT<<< process a delta containing the following types:
-         ${allTypes.join('\n')}
-      `);
-    }
   };
 }
 
