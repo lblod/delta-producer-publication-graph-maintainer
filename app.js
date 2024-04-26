@@ -58,6 +58,11 @@ for (const name in services){
 
 app.post("/delta", async function(req, res) {
   const delta = req.body;
+  const allTypes = await extractTypesFromDelta(delta);
+  await dispatchRequest(req, res, allTypes);
+});
+
+async function extractTypesFromDelta(delta) {
   let allTypes = [];
   let allUris = [];
 
@@ -89,6 +94,10 @@ app.post("/delta", async function(req, res) {
     allTypes.push(...typesFromStore);
   }
 
+  return allTypes;
+}
+
+async function dispatchRequest(req, res, allTypes) {
   for(const streamName of Object.keys(configuredTypesPerHandler)) {
     const configuredTypes = configuredTypesPerHandler[streamName].configuredTypes;
     const handler = configuredTypesPerHandler[streamName].handler;
@@ -106,7 +115,6 @@ app.post("/delta", async function(req, res) {
       `);
     }
   };
-
-});
+}
 
 app.use(errorHandler);
