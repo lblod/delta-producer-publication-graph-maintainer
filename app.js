@@ -1,17 +1,13 @@
-import { updateSudo, querySudo } from '@lblod/mu-auth-sudo';
 import bodyParser from 'body-parser';
-import { app, errorHandler, sparqlEscapeUri, uuid,
-         sparqlEscapeString, sparqlEscapeDateTime} from 'mu';
-import {
-  Config, CONFIG_SERVICES_JSON_PATH, LOG_INCOMING_DELTA,
-  DELTA_ERROR_TYPE, ERROR_TYPE, PREFIXES, ERROR_URI_PREFIX
-} from './env-config';
+import { app, errorHandler, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeDateTime, uuid } from 'mu';
+import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
+import { Config, CONFIG_SERVICES_JSON_PATH, ERROR_URI_PREFIX, DELTA_ERROR_TYPE, ERROR_TYPE, PREFIXES } from './env-config';
 import DeltaPublisher from './files-publisher/delta-publisher';
 import { executeHealingTask } from './jobs/healing/main';
 import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
-import {loadConfiguration, storeError} from './lib/utils';
+import { loadConfiguration, storeError } from './lib/utils';
 import { setupDeltaProcessorForconfig, setupDeltaFileEndpoint, setupDelaLoginEndpoint } from './producer-setup-utils';
 
 app.use( bodyParser.json({
