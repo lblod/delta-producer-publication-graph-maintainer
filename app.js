@@ -134,7 +134,7 @@ async function dispatchRequest(req, res, allTypes) {
     const handler = configuredTypesPerHandler[streamName].handler;
     if(configuredTypes.some(confType => allTypes.some(allType => confType == allType))) {
       console.log(`
-        Delta producer stream: ${streamName} --WILL-- process a delta containing the following types:
+        Delta producer stream: ${streamName} WILL process a delta containing the following types:
         ${allTypes.join('\n')}
       `);
       handler(req, res);
