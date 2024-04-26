@@ -203,7 +203,7 @@ The json file represents a dictionary of service configurations with the key bei
 - `relativeFilePath`: In container file path for writing the delta-files. Defaults to `'deltas'`.
 - `filesGraph`: URI of the graph where delta-files meta-data should be written to. Defaults to `'http://mu.semte.ch/graphs/public'`.
 - `useFileDiff`: Boolean to decide to use file diff based healing. Defaults to `false`. Recommended when dealing with significant data sets.
-- `deltaPath`: Api path for incoming delta notifications from (internal) delta-notifier. Must be provided, no default value. WILL CHANGE SOON.
+- `deltaPath`: [DEPRECATED] Api path for incoming delta notifications from (internal) delta-notifier.
 - `filesPath`: Api path for retreiving delta-files meta data. Must be provided, no default value.
 - `loginPath`: Api path for login. Must be provided, no default value.
 - `key`: Key for login. Defaults to `''`.
@@ -215,7 +215,6 @@ The json file represents a dictionary of service configurations with the key bei
 ```json
     "besluiten": {
         "deltaInterval": 10000,
-        "deltaPath": "/besluiten/delta",
         "errorCreatorUri": "http://lblod.data.gift/services/delta-producer-publication-graph-maintainer-besluiten",
         "errorGraph": "http://mu.semte.ch/graphs/harvesting",
         "exportConfigPath": "/config/besluiten/export.json",
