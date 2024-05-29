@@ -82,7 +82,7 @@ export function setupDeltaFileEndpoint(deltaPublisher) {
   };
 }
 
-export function setupDelaLoginEndpoint(service_config) {
+export function setupDeltaLoginEndpoint(service_config) {
   return async function (req, res) {
     try {
 

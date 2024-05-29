@@ -8,7 +8,7 @@ import { updatePublicationGraph } from './jobs/publishing/main';
 import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActive } from './jobs/utils';
 import { ProcessingQueue } from './lib/processing-queue';
 import { loadConfiguration, storeError } from './lib/utils';
-import { setupDeltaProcessorForconfig, setupDeltaFileEndpoint, setupDelaLoginEndpoint } from './producer-setup-utils';
+import { setupDeltaProcessorForconfig, setupDeltaFileEndpoint, setupDeltaLoginEndpoint } from './producer-setup-utils';
 
 app.use( bodyParser.json({
   type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
@@ -53,7 +53,7 @@ for (const name in services){
   // This is useful if the data in the files is confidential
   // Note that you will need to configure mu-auth so it can make sense out of it
   // TODO: probably this functionality will move somewhere else
-  app.post(service_config.loginPath, setupDelaLoginEndpoint(service_config));
+  app.post(service_config.loginPath, setupDeltaLoginEndpoint(service_config));
 }
 
 app.post("/delta", async function(req, res) {
