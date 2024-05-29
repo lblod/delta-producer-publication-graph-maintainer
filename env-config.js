@@ -116,7 +116,7 @@ export class Config {
         `INFO: "deltaPath": ${configData.deltaPath} was provided,
            but this isn't required anymore, all incoming deltas may also be submitted to
            the "/delta" endpoint.
-           This should have bettter performance when the service has multiple delta streams to manage.
+           This should have better performance when the service has multiple delta streams to manage.
       `);
       this.deltaPath = configData.deltaPath;
     }
