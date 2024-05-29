@@ -1,4 +1,7 @@
 # Changelog
+## 1.1.1 (2024-05-29)
+- Performance improvement: [single delta entry point](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/32)
+- Bugfix: [less agressive deletes ](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/31)
 ## 1.0.8 (2024-02-13)
 - Caches are now created per delta-stream and handled by a separate `DeltaPublisher` class.
   - Fixes issues with cache management and timeouts ([#25](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/25)).
