@@ -1,4 +1,6 @@
 # Changelog
+## 1.2.0 (2024-06-24)
+- The processing of the `/delta` endpoint occurs fully `async`.
 ## 1.1.1 (2024-05-29)
 - Performance improvement: [single delta entry point](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/32)
 - Bugfix: [less agressive deletes ](https://github.com/lblod/delta-producer-publication-graph-maintainer/pull/31)
