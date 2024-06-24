@@ -1,4 +1,6 @@
 # Changelog
+## 1.2.1 (2024-06-24)
+- The processing queue was given a name per stream; easier to troubleshoot.
 ## 1.2.0 (2024-06-24)
 - The processing of the `/delta` endpoint occurs fully `async`.
 ## 1.1.1 (2024-05-29)
