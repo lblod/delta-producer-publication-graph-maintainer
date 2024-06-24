@@ -15,6 +15,8 @@ app.use( bodyParser.json({
   limit: '500mb'
 }));
 
+const mainQueue = new ProcessingQueue(null, "Main Queue");
+
 let services = require(CONFIG_SERVICES_JSON_PATH);
 
 // This variable will bundle the deltaStreamHandler per export type.
@@ -57,16 +59,18 @@ for (const name in services){
 }
 
 app.post("/delta", async function(req, res) {
-  try {
-    const delta = req.body;
-    const allTypes = await extractTypesFromDelta(delta);
-    await dispatchRequest(req, res, allTypes);
-  }
-  catch (error) {
-    console.error(error);
-    storeDispatchingError(services, error);
-    res.status(500).send();
-  }
+  mainQueue.addJob( async () => {
+    try {
+      const delta = req.body;
+      const allTypes = await extractTypesFromDelta(delta);
+      await dispatchRequest(req, res, allTypes);
+    }
+    catch (error) {
+      console.error(error);
+      storeDispatchingError(services, error);
+    }
+  });
+  res.status(202).send();
 });
 
 
