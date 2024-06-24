@@ -30,7 +30,7 @@ for (const name in services){
   const service_config = new Config(service, name);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
 
-  const producerQueue = new ProcessingQueue(service_config);
+  const producerQueue = new ProcessingQueue(service_config, name);
   const deltaPublisher = new DeltaPublisher(service_config);
 
   const deltaProcessor = setupDeltaProcessorForconfig(service_config,
