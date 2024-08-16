@@ -404,29 +404,27 @@ async function exportResource(uri, config, graphFilterBuilder = () => configGrap
   const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
   const delta = [];
 
-  delta.push({
-    subject: {type: 'uri', value: uri},
-    predicate: {type: 'uri', value: rdfType},
-    object: {type: 'uri', value: config.type}
-  });
-
   let additionalFilter = '';
 
   if (config.additionalFilter) {
     additionalFilter = config.additionalFilter;
   }
 
-  for (let prop of config.properties) {
-    // We skip this information because we already encoded it in the previous step
-    // And we don't want to export too much (i.e. multi-types)
-    // Note: this is a extra safety barrier
+  for (let prop of [ ...config.properties, rdfType ]) {
+
+    let boundTypeForObject = '';
+
     if (prop == rdfType && config.strictTypeExport) {
-      continue;
+      // In case of strict export, we don't export too much.
+      // We still want to make sure the type matches the extra possible filter parameters.
+      boundTypeForObject = `BIND(${sparqlEscapeUri(config.type)} as ?o)`;
     }
 
     //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
     const q = `
       SELECT DISTINCT ?o WHERE {
+       ${boundTypeForObject}
+
         GRAPH ?graph {
           ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
         }
