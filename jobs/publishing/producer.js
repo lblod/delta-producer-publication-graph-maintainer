@@ -465,11 +465,6 @@ async function exportResource(
     }
   }
   else {
-    delta.push({
-      subject: {type: 'uri', value: uri},
-      predicate: {type: 'uri', value: rdfType},
-      object: {type: 'uri', value: config.type}
-    });
 
     let additionalFilter = '';
 
@@ -477,17 +472,19 @@ async function exportResource(
       additionalFilter = config.additionalFilter;
     }
 
-    for (let prop of config.properties) {
-      // We skip this information because we already encoded it in the previous step
-      // And we don't want to export too much (i.e. multi-types)
-      // Note: this is a extra safety barrier
+    for (let prop of [ ...config.properties, rdfType ]) {
+      let boundTypeForObject = '';
+      // In case of strict export, we don't export too much.
+      // We still want to make sure the type matches the extra possible filter parameters.
       if (prop == rdfType && config.strictTypeExport) {
-        continue;
+        boundTypeForObject = `BIND(${sparqlEscapeUri(config.type)} as ?o)`;
       }
 
       //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
       const q = `
         SELECT DISTINCT ?o WHERE {
+          ${boundTypeForObject}
+
           GRAPH ?graph {
             ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
           }
