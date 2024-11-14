@@ -103,7 +103,7 @@ export default class DeltaCache {
       return Math.ceil(totalCount / limit);
     };
     const count = await this.countDeltaFiles(service_config, since);
-    console.log("nordine count", count);
+    console.log("found delta files count:", count);
     const totalPages = calculatePages(count, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
     console.log("total pages:", totalPages);
     const getPage = async (page, limit) => {
@@ -123,7 +123,6 @@ export default class DeltaCache {
           } ORDER BY ?uuid ?filename ?created
         } LIMIT ${limit} OFFSET ${offset}`);
 
-      console.log('theresult', result);
       return result.results.bindings.map(b => {
         return {
           type: 'files',
@@ -137,12 +136,9 @@ export default class DeltaCache {
     };
     if (page) {
       if (count === 0) {
-        console.log("no result");
         return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
       }
-      console.log("getPage")
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
-      console.log("result:", pageRes);
       return {
         count,
         files: pageRes,
@@ -156,10 +152,8 @@ export default class DeltaCache {
       }
     }
     const response = [];
-    console.log("build response all")
     for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
       const res = await getPage(currentPage, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
-      console.log("build response", res)
       response.push(...res);
     }
     return {
