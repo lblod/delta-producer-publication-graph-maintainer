@@ -137,6 +137,7 @@ export default class DeltaCache {
         return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
       }
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
+      console.log("result:", pageRes);
       return {
         count,
         files: pageRes,
@@ -151,7 +152,7 @@ export default class DeltaCache {
     }
     const response = [];
     for (let currentPage = 1; page <= totalPages; page++) {
-      response.push(...(await getGraphTriples(currentPage, limit)));
+      response.push(...(await getPage(currentPage, limit)));
     }
     return {
       count,

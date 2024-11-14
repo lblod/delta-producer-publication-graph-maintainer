@@ -68,7 +68,7 @@ export default class DeltaPublisher {
   async getDeltaFiles(since, page) {
     since = since || new Date().toISOString();
     const { count, files, links } = await this.deltaCache.getDeltaFiles(this.serviceConfig, since, page);
-    console.log(`Retreived ${count} for: ${this.deltaStreamName}`);
+    console.log(`Retreived ${count} for: ${this.deltaStreamName} ${files}`);
     return {
       count, files, links
     };
