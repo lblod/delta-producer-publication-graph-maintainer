@@ -123,6 +123,7 @@ export default class DeltaCache {
           } ORDER BY ?created
         } LIMIT ${limit} OFFSET ${offset}`);
 
+      console.log('theresult', result);
       return result.results.bindings.map(b => {
         return {
           type: 'files',
@@ -139,6 +140,7 @@ export default class DeltaCache {
         console.log("no result");
         return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
       }
+      console.log("getPage")
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
       console.log("result:", pageRes);
       return {
@@ -154,6 +156,7 @@ export default class DeltaCache {
       }
     }
     const response = [];
+    console.log("build response all")
     for (let currentPage = 1; page <= totalPages; page++) {
       response.push(...(await getPage(currentPage, limit)));
     }
