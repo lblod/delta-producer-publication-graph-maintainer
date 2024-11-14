@@ -158,7 +158,9 @@ export default class DeltaCache {
     const response = [];
     console.log("build response all")
     for (let currentPage = 1; page <= totalPages; page++) {
-      response.push(...(await getPage(currentPage, limit)));
+      const res = await getPage(currentPage, limit);
+      cosnole.log("build response", res)
+      response.push(...res);
     }
     return {
       count,
