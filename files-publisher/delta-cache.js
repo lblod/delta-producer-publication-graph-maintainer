@@ -103,7 +103,9 @@ export default class DeltaCache {
       return Math.ceil(totalCount / limit);
     };
     const count = await this.countDeltaFiles(service_config, since);
+    console.log("nordine count", count);
     const totalPages = calculatePages(count, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
+    console.log("total pages:", totalPages);
     const getPage = async (page, limit) => {
       const offset = (page - 1) * limit;
       const result = await query(`
@@ -134,6 +136,7 @@ export default class DeltaCache {
     };
     if (page) {
       if (count === 0) {
+        console.log("no result");
         return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
       }
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
