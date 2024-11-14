@@ -147,18 +147,18 @@ export default class DeltaCache {
         count,
         files: pageRes,
         links: {
-          first: `${path}?since=${since}&page[number]=1`,
-          prev: page > 1 ? `${path}?since=${since}&page[number]=${page - 1}` : null,
-          next: page < totalPages ? `${path}?since=${since}&page[number]=${page + 1}` : null,
-          self: `${path}?since=${since}&page[number]=${page}`,
-          last: `${path}?since=${since}&page[number]=${totalPages}`
+          first: `${path}?since=${since}&page["number"]=1`,
+          prev: page > 1 ? `${path}?since=${since}&page["number"]=${page - 1}` : null,
+          next: page < totalPages ? `${path}?since=${since}&page["number"]=${page + 1}` : null,
+          self: `${path}?since=${since}&page["number"]=${page}`,
+          last: `${path}?since=${since}&page["number"]=${totalPages}`
         }
       }
     }
     const response = [];
     console.log("build response all")
     for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
-      const res = await getPage(currentPage, limit);
+      const res = await getPage(currentPage, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
       cosnole.log("build response", res)
       response.push(...res);
     }
