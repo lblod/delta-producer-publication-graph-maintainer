@@ -139,7 +139,7 @@ export default class DeltaCache {
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
       return {
         count,
-        page: pageRes,
+        files: pageRes,
         links: {
           first: `${path}?since=${since}&page[number]=1`,
           prev: page > 1 ? `${path}?since=${since}&page[number]=${page - 1}` : null,
@@ -155,7 +155,7 @@ export default class DeltaCache {
     }
     return {
       count,
-      response,
+      files: response,
       links: undefined
     };
 
