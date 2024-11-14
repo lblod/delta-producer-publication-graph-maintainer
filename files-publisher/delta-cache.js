@@ -71,16 +71,18 @@ export default class DeltaCache {
     const result = await query(`
     ${service_config.prefixes}
 
-    SELECT (COUNT (distinct ?uuid) as ?count) WHERE {
-      ?s a nfo:FileDataObject ; 
-          mu:uuid ?uuid ;
-          nfo:fileName ?filename ;
-          dct:publisher <${service_config.publisherUri}> ;
-          dct:created ?created .
-      ?file nie:dataSource ?s .
+    SELECT (COUNT (distinct *) as ?count) WHERE {
+      SELECT distinct ?uuid ?filename ?created WHERE {
+        ?s a nfo:FileDataObject ; 
+            mu:uuid ?uuid ;
+            nfo:fileName ?filename ;
+            dct:publisher <${service_config.publisherUri}> ;
+            dct:created ?created .
+        ?file nie:dataSource ?s .
 
-      FILTER (?created > "${since}"^^xsd:dateTime)
-    } ORDER BY ?created
+        FILTER (?created > "${since}"^^xsd:dateTime)
+      } ORDER BY ?created
+    }
   `);
 
     if (result.results.bindings?.length) {

@@ -77,7 +77,7 @@ export function setupDeltaProcessorForconfig(service_config,
 
 export function setupDeltaFileEndpoint(deltaPublisher) {
   return async function (req, res) {
-    const page = req.query.page?.number;
+    const page = req.query[`page["number"]`];
     console.log("the page:", page);
     const { count, files, links } = await deltaPublisher.getDeltaFiles(req.query.since, page ? parseInt(page) : undefined);
     res.json({ meta: { count }, data: files, links });
