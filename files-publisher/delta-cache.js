@@ -133,11 +133,15 @@ export default class DeltaCache {
       });
     };
     if (page) {
+      if (count === 0) {
+        return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
+      }
       const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
       return {
         count,
         page: pageRes,
         links: {
+          first: 1,
           prev: page > 1 ? `${path}/${page - 1}` : null,
           next: page < totalPages ? `${path}/${page + 1}` : null,
           self: `${path}/${page}`,
