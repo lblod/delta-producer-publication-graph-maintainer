@@ -142,10 +142,10 @@ export default class DeltaCache {
         page: pageRes,
         links: {
           first: 1,
-          prev: page > 1 ? `${path}/${page - 1}` : null,
-          next: page < totalPages ? `${path}/${page + 1}` : null,
-          self: `${path}/${page}`,
-          last: `/${path}/${totalPages}`
+          prev: page > 1 ? `${path}?page[number]=${page - 1}` : null,
+          next: page < totalPages ? `${path}?page[number]=${page + 1}` : null,
+          self: `${path}?page[number]=${page}`,
+          last: `/${path}?page[number]=${totalPages}`
         }
       }
     }
