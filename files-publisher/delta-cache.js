@@ -71,8 +71,7 @@ export default class DeltaCache {
     const result = await query(`
     ${service_config.prefixes}
 
-    SELECT (COUNT (distinct *) as ?count) WHERE {
-      SELECT distinct ?uuid ?filename ?created WHERE {
+    SELECT (COUNT (distinct ?uuid) as ?count) WHERE {
         ?s a nfo:FileDataObject ; 
             mu:uuid ?uuid ;
             nfo:fileName ?filename ;
@@ -81,8 +80,7 @@ export default class DeltaCache {
         ?file nie:dataSource ?s .
 
         FILTER (?created > "${since}"^^xsd:dateTime)
-      } ORDER BY ?created
-    }
+     } 
   `);
 
     if (result.results.bindings?.length) {
@@ -122,7 +120,7 @@ export default class DeltaCache {
             ?file nie:dataSource ?s .
 
             FILTER (?created > "${since}"^^xsd:dateTime)
-          } ORDER BY ?created
+          } ORDER BY ?uuid ?filename ?created
         } LIMIT ${limit} OFFSET ${offset}`);
 
       console.log('theresult', result);
