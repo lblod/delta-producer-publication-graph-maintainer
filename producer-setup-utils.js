@@ -9,8 +9,8 @@ import { doesDeltaContainNewTaskToProcess, hasInitialSyncRun, isBlockingJobActiv
 import { storeError } from './lib/utils';
 
 export function setupDeltaProcessorForconfig(service_config,
-                                                   service_export_config,
-                                                   producerQueue, deltaPublisher) {
+  service_export_config,
+  producerQueue, deltaPublisher) {
 
   return async function (req, res) {
     try {
@@ -77,8 +77,9 @@ export function setupDeltaProcessorForconfig(service_config,
 
 export function setupDeltaFileEndpoint(deltaPublisher) {
   return async function (req, res) {
-      const files = await deltaPublisher.getDeltaFiles(req.query.since);
-      res.json({data: files});
+    const page = req.query.page?.number;
+    const { count, files, links } = await deltaPublisher.getDeltaFiles(req.query.since, page ? parseInt(page) : undefined);
+    res.json({ meta: { count }, data: files, links });
   };
 }
 
@@ -110,21 +111,21 @@ export function setupDeltaLoginEndpoint(service_config) {
 
       // 4. request login recalculation
       return res
-          .header('mu-auth-allowed-groups', 'CLEAR')
-          .status(201)
-          .send({
-            links: {
-              self: '/sessions/current'
-            },
-            data: {
-              type: 'sessions',
+        .header('mu-auth-allowed-groups', 'CLEAR')
+        .status(201)
+        .send({
+          links: {
+            self: '/sessions/current'
+          },
+          data: {
+            type: 'sessions',
 
-              id: uuid()
-            }
-          });
+            id: uuid()
+          }
+        });
     } catch (e) {
       console.error(e);
-      return res.status(500).send({message: "Something went wrong"});
+      return res.status(500).send({ message: "Something went wrong" });
     }
   };
 }

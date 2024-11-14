@@ -3,7 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
-import {MAX_DELTAS_PER_FILE, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE, PRETTY_PRINT_DIFF_JSON} from "../env-config";
+import { MAX_DELTAS_PER_FILE, DELTA_FILES_PAGINATION_MAX_PER_PAGE, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE, PRETTY_PRINT_DIFF_JSON } from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -29,11 +29,11 @@ export default class DeltaCache {
   */
   async generateDeltaFile(service_config) {
     if (this.cache.length) {
-      const cachedArray = [ ...this.cache ];
+      const cachedArray = [...this.cache];
       this.cache = [];
 
       const chunkedArray = chunkCache(service_config, cachedArray);
-      for(const [ index, entry ] of chunkedArray.entries()) {
+      for (const [index, entry] of chunkedArray.entries()) {
         try {
           const folderDate = new Date();
           const subFolder = folderDate.toISOString().split('T')[0];
@@ -43,11 +43,11 @@ export default class DeltaCache {
           const filename = `delta-${new Date().toISOString()}-${index}.json`;
           const filepath = `${outputDirectory}/${filename}`;
 
-          if(PRETTY_PRINT_DIFF_JSON){
-            await fs.writeFile(filepath, JSON.stringify( entry, null, 2 ));
+          if (PRETTY_PRINT_DIFF_JSON) {
+            await fs.writeFile(filepath, JSON.stringify(entry, null, 2));
           }
           else {
-            await fs.writeFile(filepath, JSON.stringify( entry ));
+            await fs.writeFile(filepath, JSON.stringify(entry));
           }
 
           console.log(`Delta cache has been written to file. Cache contained ${entry.length} items.`);
@@ -64,21 +64,15 @@ export default class DeltaCache {
     }
   }
 
-  /**
-   * Get all delta files produced since a given timestamp
-   *
-   * @param service_config the configuration to be used
-   * @param since {string} ISO date time
-   * @public
-  */
-  async getDeltaFiles(service_config, since) {
-    console.log(`Retrieving delta files since ${since}`);
+
+  async countDeltaFiles(service_config, since) {
+    console.log(`Retrieving count delta files since ${since}`);
 
     const result = await query(`
     ${service_config.prefixes}
 
-    SELECT ?uuid ?filename ?created WHERE {
-      ?s a nfo:FileDataObject ;
+    SELECT (COUNT (distinct ?uuid) as ?count) WHERE {
+      ?s a nfo:FileDataObject ; 
           mu:uuid ?uuid ;
           nfo:fileName ?filename ;
           dct:publisher <${service_config.publisherUri}> ;
@@ -89,16 +83,78 @@ export default class DeltaCache {
     } ORDER BY ?created
   `);
 
-    return result.results.bindings.map(b => {
+    if (result.results.bindings?.length) {
+      return parseInt(result.results.bindings[0].count?.value || 0);
+    }
+    return 0;
+  }
+
+  /**
+   * Get all delta files produced since a given timestamp
+   *
+   * @param service_config the configuration to be used
+   * @param since {string} ISO date time
+   * @public
+  */
+  async getDeltaFiles(service_config, since, page) {
+    const path = service_config.filesPath;
+    console.log(`Retrieving delta files since ${since}`);
+    const calculatePages = (totalCount, limit) => {
+      return Math.ceil(totalCount / limit);
+    };
+    const count = await this.countDeltaFiles(service_config, since);
+    const totalPages = calculatePages(count, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
+    const getPage = async (page, limit) => {
+      const offset = (page - 1) * limit;
+      const result = await query(`
+        ${service_config.prefixes}
+        SELECT ?uuid ?filename ?created WHERE {
+          SELECT distinct ?uuid ?filename ?created WHERE {
+            ?s a nfo:FileDataObject ;
+                mu:uuid ?uuid ;
+                nfo:fileName ?filename ;
+                dct:publisher <${service_config.publisherUri}> ;
+                dct:created ?created .
+            ?file nie:dataSource ?s .
+
+            FILTER (?created > "${since}"^^xsd:dateTime)
+          } ORDER BY ?created
+        } LIMIT ${limit} OFFSET ${offset}`);
+
+      return result.results.bindings.map(b => {
+        return {
+          type: 'files',
+          id: b['uuid'].value,
+          attributes: {
+            name: b['filename'].value,
+            created: b['created'].value
+          }
+        };
+      });
+    };
+    if (page) {
+      const pageRes = await getPage(page, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
       return {
-        type: 'files',
-        id: b['uuid'].value,
-        attributes: {
-          name: b['filename'].value,
-          created: b['created'].value
+        count,
+        page: pageRes,
+        links: {
+          prev: page > 1 ? `${path}/${page - 1}` : null,
+          next: page < totalPages ? `${path}/${page + 1}` : null,
+          self: `${path}/${page}`,
+          last: `/${path}/${totalPages}`
         }
-      };
-    });
+      }
+    }
+    const response = [];
+    for (let currentPage = 1; page <= totalPages; page++) {
+      response.push(...(await getGraphTriples(currentPage, limit)));
+    }
+    return {
+      count,
+      response,
+      links: undefined
+    };
+
   }
 
   /**
@@ -144,21 +200,21 @@ export default class DeltaCache {
  * @param cache: [ { inserts: [], deletes: [] }, { inserts: [], deletes: [] } ]
  * @return [ [ { inserts: [], deletes: [] } ], [ { inserts: [], deletes: [] } ] ]
  */
-function chunkCache(service_config, cache ) {
+function chunkCache(service_config, cache) {
   const allChunks = [];
-  for(const entry of cache){
+  for (const entry of cache) {
 
     //results in [ [<uri_1>, ..., <uri_n>], [<uri_1>, ..., <uri_n>] ]
     const insertChunks = _.chunk(entry.inserts, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE);
     const deleteChunks = _.chunk(entry.deletes, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE);
 
-    if(deleteChunks.length > 1 || insertChunks.length > 1 ){
-      for(const deleteChunk of deleteChunks){
+    if (deleteChunks.length > 1 || insertChunks.length > 1) {
+      for (const deleteChunk of deleteChunks) {
         const chunk = { inserts: [], deletes: deleteChunk };
         allChunks.push(chunk);
       }
 
-      for(const insertChunk of insertChunks){
+      for (const insertChunk of insertChunks) {
         const chunk = { inserts: insertChunk, deletes: [] };
         allChunks.push(chunk);
       }

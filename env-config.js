@@ -16,6 +16,9 @@ export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/
 export const ERROR_TYPE = 'http://open-services.net/ns/core#Error';
 export const ERROR_URI_PREFIX = 'http://redpencil.data.gift/id/publication-maintenance/error/';
 
+
+export const DELTA_FILES_PAGINATION_MAX_PER_PAGE = parseInt(process.env.DELTA_FILES_PAGINATION_MAX_PER_PAGE || "100") || 100;
+
 export const PREFIXES = `
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
       PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
@@ -66,24 +69,24 @@ export class Config {
     this.skipMuAuthDeltaFolding = configData.skipMuAuthDeltaFolding === 'true' || configData.skipMuAuthDeltaFolding === true;
 
     this.muCallScopeIdPublicationGraphMaintenance = configData.muCallScopeIdPublicationGraphMaintenance
-        || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
+      || 'http://redpencil.data.gift/id/concept/muScope/deltas/publicationGraphMaintenance';
 
     this.muCallScopeIdInitialSync = configData.muCallScopeIdInitialSync
-        || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
+      || 'http://redpencil.data.gift/id/concept/muScope/deltas/initialSync';
 
     //mainly for debugging purposes
     this.waitForInitialSync = !(configData.waitForInitialSync === 'false' || configData.waitForInitialSync === false);
 
     if (!configData.publicationGraph)
-        throw `Expected 'publicationGraph' should be provided.`;
+      throw `Expected 'publicationGraph' should be provided.`;
     this.publicationGraph = configData.publicationGraph;
 
     if (!configData.initialPublicationGraphSyncJobOperation)
-        throw `Expected 'initialPublicationGraphSyncJobOperation' should be provided.`;
+      throw `Expected 'initialPublicationGraphSyncJobOperation' should be provided.`;
     this.initialPublicationGraphSyncJobOperation = configData.initialPublicationGraphSyncJobOperation;
 
     if (!configData.healingJobOperation)
-        throw `Expected 'healingJobOperation' should be provided.`;
+      throw `Expected 'healingJobOperation' should be provided.`;
     this.healingJobOperation = configData.healingJobOperation;
 
     /*
@@ -95,7 +98,7 @@ export class Config {
     this.skipMuAuthHealing = configData.skipMuAuthHealing === 'true' || configData.skipMuAuthHealing === true;
 
     //FILES PUBLISHER
-    this.serveDeltaFiles = configData.serveDeltaFiles === 'true'|| configData.serveDeltaFiles === true;
+    this.serveDeltaFiles = configData.serveDeltaFiles === 'true' || configData.serveDeltaFiles === true;
     this.logOutgoingDelta = configData.logOutgoingDelta === 'true' || configData.logOutgoingDelta === true;
     this.deltaInterval = parseInt(configData.deltaInterval) || 1000;
     this.errorGraph = configData.errorGraph || 'http://mu.semte.ch/graphs/system/errors';
@@ -121,14 +124,14 @@ export class Config {
       this.deltaPath = configData.deltaPath;
     }
     if (!configData.filesPath)
-        throw `Expected 'filesPath' should be provided.`;
+      throw `Expected 'filesPath' should be provided.`;
     this.filesPath = configData.filesPath;
     if (!configData.loginPath)
-        throw `Expected 'loginPath' should be provided.`;
+      throw `Expected 'loginPath' should be provided.`;
     this.loginPath = configData.loginPath;
     //LOGIN
     this.key = configData.key || '';
     this.account = configData.account || 'http://services.lblod.info/diff-consumer/account';
     this.account_graph = configData.account_graph || 'http://mu.semte.ch/graphs/diff-producer/login';
-    }
+  }
 }

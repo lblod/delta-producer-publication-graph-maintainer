@@ -10,8 +10,8 @@ import { ProcessingQueue } from './lib/processing-queue';
 import { loadConfiguration, storeError } from './lib/utils';
 import { setupDeltaProcessorForconfig, setupDeltaFileEndpoint, setupDeltaLoginEndpoint } from './producer-setup-utils';
 
-app.use( bodyParser.json({
-  type: function(req) { return /^application\/json/.test( req.get('content-type') ); },
+app.use(bodyParser.json({
+  type: function (req) { return /^application\/json/.test(req.get('content-type')); },
   limit: '500mb'
 }));
 
@@ -25,7 +25,7 @@ let services = require(CONFIG_SERVICES_JSON_PATH);
 const configuredTypesPerHandler = {};
 
 console.log("Services config is: ", services);
-for (const name in services){
+for (const name in services) {
   let service = services[name];
   const service_config = new Config(service, name);
   const service_export_config = loadConfiguration(service_config.exportConfigPath);
@@ -34,22 +34,23 @@ for (const name in services){
   const deltaPublisher = new DeltaPublisher(service_config);
 
   const deltaProcessor = setupDeltaProcessorForconfig(service_config,
-                                                      service_export_config,
-                                                      producerQueue,
-                                                      deltaPublisher);
+    service_export_config,
+    producerQueue,
+    deltaPublisher);
 
   const configuredTypes = service_export_config.export.map(c => c.type);
   configuredTypes.push(service_config.taskType); //it still needs to listen to Tasks for healing etc
 
   configuredTypesPerHandler[name] = { handler: deltaProcessor, configuredTypes };
 
-  if(service_config.deltaPath) {
+  if (service_config.deltaPath) {
     app.post(service_config.deltaPath, deltaProcessor);
   }
 
   if (service_config.serveDeltaFiles) {
     //This endpoint only makes sense if serveDeltaFiles is set to true;
     app.get(service_config.filesPath, setupDeltaFileEndpoint(deltaPublisher));
+
   }
   // This endpoint can be used by the consumer to get a session
   // This is useful if the data in the files is confidential
@@ -58,8 +59,8 @@ for (const name in services){
   app.post(service_config.loginPath, setupDeltaLoginEndpoint(service_config));
 }
 
-app.post("/delta", async function(req, res) {
-  mainQueue.addJob( async () => {
+app.post("/delta", async function (req, res) {
+  mainQueue.addJob(async () => {
     try {
       const delta = req.body;
       const allTypes = await extractTypesFromDelta(delta);
@@ -88,8 +89,8 @@ async function extractTypesFromDelta(delta) {
     const triples = [...changeSet.inserts, ...changeSet.deletes];
 
     const typesFromChangeset = triples
-          .filter(t => t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
-          .map(t => t.object.value);
+      .filter(t => t.predicate.value == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
+      .map(t => t.object.value);
     allTypes.push(...typesFromChangeset);
 
     // gather all involved URI's so to deduce values from store
@@ -98,11 +99,11 @@ async function extractTypesFromDelta(delta) {
   }
 
   // Then add types from store
-  allUris = [ ... new Set(allUris) ];
+  allUris = [... new Set(allUris)];
   console.log(`Found ${allUris.length} in delta, checking store for rdf:type`);
 
   // Some speed optimisation, if long querystring, mu-auth is slower and ask one by one
-  if(allUris.length > 20 ) {
+  if (allUris.length > 20) {
     for (let uri of allUris) {
       const result = await querySudo(`
         SELECT DISTINCT ?type WHERE {
@@ -118,8 +119,8 @@ async function extractTypesFromDelta(delta) {
       SELECT DISTINCT ?type WHERE {
           VALUES ?subject {
              ${allUris
-               .map(uri => sparqlEscapeUri(uri))
-               .join('\n')}
+        .map(uri => sparqlEscapeUri(uri))
+        .join('\n')}
           }
           ?subject a ?type.
       }
@@ -133,10 +134,10 @@ async function extractTypesFromDelta(delta) {
 
 async function dispatchRequest(req, res, allTypes) {
   // TODO: note; probs the dispatching can even be made more efficient, but would required bigger refactor.
-  for(const streamName of Object.keys(configuredTypesPerHandler)) {
+  for (const streamName of Object.keys(configuredTypesPerHandler)) {
     const configuredTypes = configuredTypesPerHandler[streamName].configuredTypes;
     const handler = configuredTypesPerHandler[streamName].handler;
-    if(configuredTypes.some(confType => allTypes.some(allType => confType == allType))) {
+    if (configuredTypes.some(confType => allTypes.some(allType => confType == allType))) {
       console.log(`
         Delta producer stream: ${streamName} WILL process a delta containing the following types:
         ${allTypes.join('\n')}
@@ -164,7 +165,7 @@ async function storeDispatchingError(servicesConfig, errorMsg) {
       //TODO: a lot of complication arises from the way we can configure different streams
       let graphs = [];
       const creators = [];
-      for (const name in services){
+      for (const name in services) {
         let service = services[name];
         const service_config = new Config(service, name, false);
         graphs.push(`${sparqlEscapeUri(service_config.jobsGraph)}`);
@@ -172,7 +173,7 @@ async function storeDispatchingError(servicesConfig, errorMsg) {
       }
 
       graphs = [...new Set(graphs)];
-      const partialInsertBlocks  = graphs.map(g => `
+      const partialInsertBlocks = graphs.map(g => `
             GRAPH ${g} {
              ${sparqlEscapeUri(uri)} a ${sparqlEscapeUri(ERROR_TYPE)}, ${sparqlEscapeUri(DELTA_ERROR_TYPE)}.
             }
