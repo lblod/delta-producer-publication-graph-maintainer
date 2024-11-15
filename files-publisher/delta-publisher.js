@@ -61,7 +61,7 @@ export default class DeltaPublisher {
   }
 
   /**
-   * Retrieves delta files generated since the specified timestamp.
+   * Retrieves delta files generated since the specified timestamp, up to a maximum of MAX_DELTA_FILES_PER_REQUEST.
    * @param {string} [since=new Date().toISOString()] - Timestamp to fetch delta files from.
    * @returns {Promise<Array>} Collection of delta files.
    */

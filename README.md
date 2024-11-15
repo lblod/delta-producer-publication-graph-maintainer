@@ -245,7 +245,8 @@ The following enviroment variables can be optionally configured:
 * `PRETTY_PRINT_DIFF_JSON (default: true)`: Whether to pretty print the diff json
 * `CONFIG_SERVICES_JSON_PATH (default: '/config/services.json')`: The services configuration path
 * `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE (defaut: 100)`: A delta is an object containing `inserts` and `deletes` properties. This variables specs the max. number of elements in these properties. This is mainly to tweak the size of the published delta files; where in some cases we need to tweak this number to reduce load on the consumers.
-* `MAX_DELTAS_PER_FILE: (default 10)`: Related to `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE`, a delta-file bundles an array of delta-objects, here you configure the number of these delta-object per delta file. Again something to tweak only if you need to take care of the (potential) load on consumers.
+* `MAX_DELTAS_PER_FILE (default: 10)`: Related to `MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE`, a delta-file bundles an array of delta-objects, here you configure the number of these delta-object per delta file. Again something to tweak only if you need to take care of the (potential) load on consumers.
+* `MAX_DELTA_FILES_PER_REQUEST (default: 10_000)`: Limit the number of delta-files to be returned by `files?since=${timestamp}`. This is to prevent the service to crash when to many delta-files are present. 
 
 
 ### API
