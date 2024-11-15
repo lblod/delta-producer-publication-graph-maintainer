@@ -10,7 +10,7 @@ export const PUBLICATION_MU_AUTH_ENDPOINT = process.env.PUBLICATION_MU_AUTH_ENDP
 export const PRETTY_PRINT_DIFF_JSON = process.env.PRETTY_PRINT_DIFF_JSON === 'true';
 export const MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE = parseInt(process.env.MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE) || 100;
 export const MAX_DELTAS_PER_FILE = parseInt(process.env.MAX_DELTAS_PER_FILE) || 10;
-export const MAX_DELTA_FILES_PER_REQUEST = parseInt(process.env.MAX_DELTA_FILES_PER_REQUEST) || 10_000;
+export const MAX_DELTA_FILES_PER_REQUEST = parseInt(process.env.MAX_DELTA_FILES_PER_REQUEST) || 1000;
 export const CONFIG_SERVICES_JSON_PATH = process.env.CONFIG_SERVICES_JSON_PATH || '/config/services.json';
 
 export const DELTA_ERROR_TYPE = 'http://redpencil.data.gift/vocabularies/deltas/Error';
