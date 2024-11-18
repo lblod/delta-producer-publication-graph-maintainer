@@ -90,25 +90,11 @@ export default class DeltaCache {
   }
 
   /**
-   * Get all delta files produced since a given timestamp
-   *
-   * @param service_config the configuration to be used
-   * @param since {string} ISO date time
-   * @public
-  */
-  async getDeltaFiles(service_config, since, page) {
-    const path = service_config.filesPath;
-    console.log(`Retrieving delta files since ${since}`);
-    const calculatePages = (totalCount, limit) => {
-      return Math.ceil(totalCount / limit);
-    };
-    const count = await this.countDeltaFiles(service_config, since);
-    console.log("found delta files count:", count);
-    const totalPages = calculatePages(count, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
-    console.log("total pages:", totalPages);
-    const getPage = async (page, limit) => {
-      const offset = (page - 1) * limit;
-      const result = await query(`
+   *  Get all detla files produced since a given timestamp for a specific page
+   * */
+  async getPage(page, limit) {
+    const offset = (page - 1) * limit;
+    const result = await query(`
         ${service_config.prefixes}
         SELECT ?uuid ?filename ?created WHERE {
           SELECT distinct ?uuid ?filename ?created WHERE {
@@ -120,20 +106,38 @@ export default class DeltaCache {
             ?file nie:dataSource ?s .
 
             FILTER (?created > "${since}"^^xsd:dateTime)
-          } ORDER BY ?uuid ?filename ?created
+          } ORDER BY ?created ?uuid ?filename 
         } LIMIT ${limit} OFFSET ${offset}`);
 
-      return result.results.bindings.map(b => {
-        return {
-          type: 'files',
-          id: b['uuid'].value,
-          attributes: {
-            name: b['filename'].value,
-            created: b['created'].value
-          }
-        };
-      });
+    return result.results.bindings.map(b => {
+      return {
+        type: 'files',
+        id: b['uuid'].value,
+        attributes: {
+          name: b['filename'].value,
+          created: b['created'].value
+        }
+      };
+    });
+  }
+
+  /**
+   * Get all delta files produced since a given timestamp
+   *
+   * @param service_config the configuration to be used
+   * @param since {string} ISO date time
+   * @public
+  */
+  async getDeltaFiles(service_config, since, page) {
+    console.log(`Retrieving delta files since ${since}`);
+    const calculatePages = (totalCount, limit) => {
+      return Math.ceil(totalCount / limit);
     };
+    const count = await this.countDeltaFiles(service_config, since);
+    console.log("found delta files count:", count);
+    const totalPages = calculatePages(count, DELTA_FILES_PAGINATION_MAX_PER_PAGE);
+    console.log("total pages:", totalPages);
+
     if (page) {
       if (count === 0) {
         return { count, page: [], links: { first: null, prev: null, next: null, self: null, last: null } };
