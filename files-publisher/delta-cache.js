@@ -3,7 +3,7 @@ import { updateSudo as update } from '@lblod/mu-auth-sudo';
 import fs from 'fs-extra';
 import { query, sparqlEscapeDateTime, uuid } from 'mu';
 import { storeError } from '../lib/utils';
-import {MAX_DELTAS_PER_FILE, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE, PRETTY_PRINT_DIFF_JSON} from "../env-config";
+import {MAX_DELTAS_PER_FILE, MAX_TRIPLES_PER_OPERATION_IN_DELTA_FILE, MAX_DELTA_FILES_PER_REQUEST, PRETTY_PRINT_DIFF_JSON} from "../env-config";
 
 const SHARE_FOLDER = '/share';
 
@@ -65,28 +65,29 @@ export default class DeltaCache {
   }
 
   /**
-   * Get all delta files produced since a given timestamp
+   * Get all delta files produced since a given timestamp, up to a maximum of MAX_DELTA_FILES_PER_REQUEST
    *
    * @param service_config the configuration to be used
    * @param since {string} ISO date time
    * @public
   */
   async getDeltaFiles(service_config, since) {
-    console.log(`Retrieving delta files since ${since}`);
+    console.log(`Retrieving delta files since ${since}, up to ${MAX_DELTA_FILES_PER_REQUEST} files per query`);
 
     const result = await query(`
     ${service_config.prefixes}
 
     SELECT ?uuid ?filename ?created WHERE {
-      ?s a nfo:FileDataObject ;
-          mu:uuid ?uuid ;
-          nfo:fileName ?filename ;
-          dct:publisher <${service_config.publisherUri}> ;
-          dct:created ?created .
-      ?file nie:dataSource ?s .
-
-      FILTER (?created > "${since}"^^xsd:dateTime)
-    } ORDER BY ?created
+      SELECT distinct ?uuid ?filename ?created WHERE {
+        ?s a nfo:FileDataObject ;
+            mu:uuid ?uuid ;
+            nfo:fileName ?filename ;
+            dct:publisher <${service_config.publisherUri}> ;
+            dct:created ?created .
+        ?file nie:dataSource ?s .
+        FILTER (?created > "${since}"^^xsd:dateTime)
+      } ORDER BY ?created
+     } LIMIT ${MAX_DELTA_FILES_PER_REQUEST}
   `);
 
     return result.results.bindings.map(b => {
