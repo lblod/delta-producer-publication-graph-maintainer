@@ -78,15 +78,16 @@ export default class DeltaCache {
     ${service_config.prefixes}
 
     SELECT ?uuid ?filename ?created WHERE {
-      ?s a nfo:FileDataObject ;
-          mu:uuid ?uuid ;
-          nfo:fileName ?filename ;
-          dct:publisher <${service_config.publisherUri}> ;
-          dct:created ?created .
-      ?file nie:dataSource ?s .
-
-      FILTER (?created > "${since}"^^xsd:dateTime)
-    } ORDER BY ?created LIMIT ${MAX_DELTA_FILES_PER_REQUEST}
+      SELECT distinct ?uuid ?filename ?created WHERE {
+        ?s a nfo:FileDataObject ;
+            mu:uuid ?uuid ;
+            nfo:fileName ?filename ;
+            dct:publisher <${service_config.publisherUri}> ;
+            dct:created ?created .
+        ?file nie:dataSource ?s .
+        FILTER (?created > "${since}"^^xsd:dateTime)
+      } ORDER BY ?created
+     } LIMIT ${MAX_DELTA_FILES_PER_REQUEST}
   `);
 
     return result.results.bindings.map(b => {
