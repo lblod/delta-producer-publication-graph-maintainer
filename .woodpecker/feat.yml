@@ -7,5 +7,5 @@ steps:
     secrets: [docker_username, docker_password]
 when:
   branch:
-    - feat/*
+    - feature/*
   event: push
