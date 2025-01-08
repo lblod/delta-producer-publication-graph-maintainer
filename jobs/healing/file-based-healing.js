@@ -318,7 +318,7 @@ async function getTriplesPaginated(serviceConfig, property, propertyMap, concept
             count = parseInt(countResult.results.bindings[0].count?.value || 0);
         }
 
-        const totalPages = calculatePages(count, 100);
+        const totalPages = calculatePages(count, 2000);
         const response = [];
         for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
             let queryStr = generateQueryPage(
@@ -328,7 +328,7 @@ async function getTriplesPaginated(serviceConfig, property, propertyMap, concept
                     publicationGraph: serviceConfig.publicationGraph,
                     conceptSchemeUri,
                     page: currentPage,
-                    limit: 100
+                    limit: 2000
                 });
 
 
