@@ -320,7 +320,7 @@ async function getTriplesPaginated(serviceConfig, property, propertyMap, concept
 
         const totalPages = calculatePages(count, 100);
         const response = [];
-        for (let currentPage = 0; currentPage <= totalPages; currentPage++) {
+        for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
             let queryStr = generateQueryPage(
                 {
                     config,
