@@ -1,4 +1,8 @@
 # Changelog
+## 1.3.0 (2025-01-08)
+- Limit delta files returned to MAX_DELTA_FILES_PER_REQUEST (this is backwards compatible)
+## 1.2.2 (2024-06-16)
+-  Ensure when exporting type on strictFilter, the graphFilter is taken into account
 ## 1.2.1 (2024-06-24)
 - The processing queue was given a name per stream; easier to troubleshoot.
 ## 1.2.0 (2024-06-24)
