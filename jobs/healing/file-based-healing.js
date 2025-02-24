@@ -2,7 +2,7 @@ import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
 import DeltaPublisher from '../../files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
-import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
+import { batchedQuery } from '../../lib/utils';
 
 import {
   groupPathToConceptSchemePerProperty,
@@ -135,16 +135,27 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
   let sourceTriples = tmp.fileSync();
   console.log(`Hitting database ${endpoint} with expensive queries`);
 
+
+
+
   for(const config of propertyMap[property]){
+    const { healingOptions } = config;
+    const healingOptionsForProperty = healingOptions[property];
+
     let queryStr = generateQuery(
       { config,
         property,
         publicationGraph: serviceConfig.publicationGraph,
         conceptSchemeUri,
-        asConstructQuery: true
+        asConstructQuery: false
       });
+      debugger
+      const results = await batchedQuery(queryStr,
+                                    healingOptionsForProperty.queryChunkSize,
+                                    endpoint
+                                   );
 
-    const results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+    //const results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
 
     let triples = results?.results?.bindings.map(b => {
       return  {
