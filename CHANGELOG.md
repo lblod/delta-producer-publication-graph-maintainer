@@ -1,4 +1,6 @@
 # Changelog
+## 1.4.0 (2025-02-26)
+- Suport `queryChunkSize` file based healing.
 ## 1.3.0 (2025-01-08)
 - Limit delta files returned to MAX_DELTA_FILES_PER_REQUEST (this is backwards compatible)
 ## 1.2.2 (2024-06-16)
