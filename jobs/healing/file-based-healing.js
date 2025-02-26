@@ -2,12 +2,11 @@ import * as tmp from 'tmp';
 import * as Readlines from '@lazy-node/readlines';
 import DeltaPublisher from '../../files-publisher/delta-publisher';
 import { appendPublicationGraph } from '../utils';
+import { querySudo as query } from '@lblod/mu-auth-sudo';
 import { batchedQuery } from '../../lib/utils';
 
 import {
   groupPathToConceptSchemePerProperty,
-  getScopedSourceTriples,
-  getScopedPublicationTriples,
   updateDatabase,
   generateGetPublicationTriplesQuery,
   generateGetSourceTriplesQuery,
@@ -136,26 +135,35 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
   console.log(`Hitting database ${endpoint} with expensive queries`);
 
 
-
-
   for(const config of propertyMap[property]){
     const { healingOptions } = config;
-    const healingOptionsForProperty = healingOptions[property];
+    const healingOptionsForProperty = healingOptions && healingOptions[property];
+
+    let asConstructQuery = true;
+    if(healingOptionsForProperty?.queryChunkSize) {
+      asConstructQuery = false;
+    }
 
     let queryStr = generateQuery(
       { config,
         property,
         publicationGraph: serviceConfig.publicationGraph,
         conceptSchemeUri,
-        asConstructQuery: false
+        asConstructQuery
       });
-      debugger
-      const results = await batchedQuery(queryStr,
-                                    healingOptionsForProperty.queryChunkSize,
-                                    endpoint
-                                   );
 
-    //const results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+    let results = null;
+    if(asConstructQuery) {
+      results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+    }
+    else {
+      results = await batchedQuery(queryStr,
+                                   healingOptionsForProperty.queryChunkSize,
+                                   endpoint,
+                                   'ORDER BY ?subject ?predicate ?object',
+                                   true);
+    }
+
 
     let triples = results?.results?.bindings.map(b => {
       return  {
