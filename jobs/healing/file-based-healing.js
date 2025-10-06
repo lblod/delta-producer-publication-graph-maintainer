@@ -155,6 +155,7 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
     let results = null;
     if(asConstructQuery) {
       results = await query(queryStr, {}, { sparqlEndpoint: endpoint, mayRetry: true });
+      results = results?.results?.bindings;
     }
     else {
       results = await batchedQuery(queryStr,
@@ -165,7 +166,7 @@ async function getTriples(serviceConfig, property, propertyMap, conceptSchemeUri
     }
 
 
-    let triples = results?.results?.bindings.map(b => {
+    let triples = results.map(b => {
       return  {
         graph: {
           type: 'uri',

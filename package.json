@@ -1,6 +1,6 @@
 {
   "name": "delta-producer-publication-graph-maintainer",
-  "version": "1.2.2",
+  "version": "1.4.1",
   "description": "Microservice to maintain the publication graph during delta production process",
   "dependencies": {
     "@lazy-node/readlines": "^3.0.2",
