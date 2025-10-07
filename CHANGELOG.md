@@ -1,4 +1,7 @@
 # Changelog
+## 1.4.2 (2025-10-07)
+- Fix `queryChunkSize` file based healing.
+- Woodpecker config
 ## 1.4.0 (2025-02-26)
 - Suport `queryChunkSize` file based healing.
 ## 1.3.0 (2025-01-08)
