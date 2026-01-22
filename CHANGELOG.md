@@ -1,4 +1,6 @@
 # Changelog
+## 1.4.3 (2026-01-22)
+- `batchedQuery`: fix issue with `count` query being sent to wrong SPARQL endpoint
 ## 1.4.2 (2025-10-07)
 - Fix `queryChunkSize` file based healing.
 - Woodpecker config
