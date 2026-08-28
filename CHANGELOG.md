@@ -1,4 +1,6 @@
 # Changelog
+## Unreleased
+- Bind `?subject` in the `additionalFilter` source-export query of the delete flow, so the filter evaluates per resource instead of globally (a global `NOT EXISTS` filter wrongly wiped the export of every re-evaluated resource) [OP-3859]
 ## 1.4.3 (2026-01-22)
 - `batchedQuery`: fix issue with `count` query being sent to wrong SPARQL endpoint
 ## 1.4.2 (2025-10-07)

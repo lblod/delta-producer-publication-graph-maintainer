@@ -480,13 +480,16 @@ async function exportResource(
         boundTypeForObject = `BIND(${sparqlEscapeUri(config.type)} as ?o)`;
       }
 
-      //Note the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+      // Notes
+      // - the PublicationGraph is blacklisted -> it should not ONLY reside in the publicationGraph
+      // - additionalFilter depends on `?subject` being bound.
       const q = `
         SELECT DISTINCT ?o WHERE {
+          BIND(${sparqlEscapeUri(uri)} as ?subject)
           ${boundTypeForObject}
 
           GRAPH ?graph {
-            ${sparqlEscapeUri(uri)} ${sparqlEscapePredicate(prop)} ?o.
+            ?subject ${sparqlEscapePredicate(prop)} ?o.
           }
 
           ${additionalFilter ? additionalFilter : ''}
